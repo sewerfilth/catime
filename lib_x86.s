@@ -1,11 +1,15 @@
 // libcatime — x86_64 / Darwin Mach-O (base API)
 //
 // AT&T syntax. Links against libc for system-time access.
+// Detached mode (ct_detach/ct_tick/ct_attach) drives a synthetic timebase
+// for replay and warp-speed simulation.
 //
 // Compile:
 //   clang -arch x86_64 -c lib_x86.s -o lib_x86.o
-//
-// API: see catime.h
+
+.section __DATA,__bss
+.lcomm _ct_mode,    8           // 0=attached, 1=detached
+.lcomm _ct_counter, 8
 
 .section __TEXT,__text
 
@@ -78,12 +82,57 @@ _ct_split:
     retq
 
 // ----------------------------------------------------------------------------
+// void ct_detach(uint64_t start_unix_sec)
+// ----------------------------------------------------------------------------
+.global _ct_detach
+.p2align 4
+_ct_detach:
+    movq  %rdi, _ct_counter(%rip)
+    movq  $1, _ct_mode(%rip)
+    retq
+
+// ----------------------------------------------------------------------------
+// void ct_attach(void)
+// ----------------------------------------------------------------------------
+.global _ct_attach
+.p2align 4
+_ct_attach:
+    movq  $0, _ct_mode(%rip)
+    retq
+
+// ----------------------------------------------------------------------------
+// void ct_tick(uint64_t delta_sec)
+// ----------------------------------------------------------------------------
+.global _ct_tick
+.p2align 4
+_ct_tick:
+    cmpq  $0, _ct_mode(%rip)
+    je    1f
+    addq  %rdi, _ct_counter(%rip)
+1:  retq
+
+// ----------------------------------------------------------------------------
+// int ct_is_detached(void)
+// ----------------------------------------------------------------------------
+.global _ct_is_detached
+.p2align 4
+_ct_is_detached:
+    movq  _ct_mode(%rip), %rax
+    retq
+
+// ----------------------------------------------------------------------------
 // uint64_t ct_now_unix_sec(void)
+//   detached: single load (~1ns)
+//   attached: clock_gettime via libc (~22ns under Rosetta)
 // ----------------------------------------------------------------------------
 .global _ct_now_unix_sec
 .p2align 4
 _ct_now_unix_sec:
-    pushq %rbp
+    cmpq  $0, _ct_mode(%rip)
+    je    1f
+    movq  _ct_counter(%rip), %rax
+    retq
+1:  pushq %rbp
     movq  %rsp, %rbp
     subq  $16, %rsp
     movl  $0, %edi                   // CLOCK_REALTIME

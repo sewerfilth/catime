@@ -187,6 +187,59 @@ CLI tools and base API link against libc. Fixed-interval library is
 pure-syscall (no libc), cross-compiled via clang `-target` from
 Apple-shipped clang — no extra toolchain.
 
+## Detached mode — the virtual crystal
+
+By default catime is a high-speed *view* of reality: every `ct_now_*` reads
+the hardware clock. **Detached mode** swaps that source for a
+developer-driven counter, turning libcatime into a *synthetic timebase*
+that you can speed up, slow down, pause, or rewind without touching the
+rest of the format / decompose / convert pipeline.
+
+```c
+ct_detach(1767225600);          // anchor at 2026-01-01 00:00:00 UTC
+ct_now_cat_flat();              // -> 0  (midnight)
+ct_tick(43200);                 // advance half a day
+ct_now_cat_flat();              // -> 500000  (noon)
+ct_tick(43200);
+ct_now_cat_flat();              // -> 0  (wrapped to next midnight)
+ct_attach();                    // back to wall clock
+```
+
+**Why it matters:**
+
+1. **Warp-speed simulation.** Cat-time is a pure `0..1_000_000` counter,
+   so you can clock the system at near-memory-bandwidth speed and walk an
+   entire cat-day without waiting for the Earth to rotate. Measured:
+   simulating 86 400 cat-second ticks (one real day) takes **0.244 ms**
+   on arm64 — a **354 million× warp factor**.
+2. **Deterministic benchmarking.** No NTP drift, no kernel jitter, no
+   `mach_absolute_time` micro-adjustments. Same input → same trace, every
+   run. Useful for finding race conditions and golden-trace replay.
+3. **Black-box replay.** Persisted catime values can be fed back into a
+   detached emitter to step through historical events one cat-second
+   (86.4 ms real) at a time — the system "thinks" it's whenever the
+   counter says.
+4. **Zero overhead when off.** Attached mode is unchanged (`cmpq` on a
+   single byte, predicted-not-taken). Detached adds nothing to the hot
+   path of attached use.
+
+**Per-call cost — attached vs detached:**
+
+| call                      | attached (arm64) | detached (arm64) | speedup |
+|---------------------------|------------------|------------------|---------|
+| `ct_now_unix_sec`         | 16.95 ns         | **1.05 ns**      | ~16×    |
+| `ct_now_cat_flat`         | 31.36 ns         | **2.26 ns**      | ~14×    |
+| `ct_tick + ct_now_cat_flat` | n/a            | **2.87 ns**      | —       |
+
+| call                      | attached (x86_64) | detached (x86_64) | speedup |
+|---------------------------|-------------------|-------------------|---------|
+| `ct_now_unix_sec`         | 27.73 ns          | **0.95 ns**       | ~29×    |
+| `ct_now_cat_flat`         | 32.48 ns          | **5.15 ns**       | ~6×     |
+
+The detached `ct_now_unix_sec` is a single `ldr`/`movq` from BSS — about
+**1 GOps/s** on this hardware. That's the upper bound on how fast a
+simulation can step through cat-time.
+
 ## libcatime (macOS Mach-O — base API)
 
 Linkable static library object exposing the base catime primitives. See
@@ -199,6 +252,12 @@ uint64_t ct_pack(uint64_t h, uint64_t m, uint64_t s);
 void     ct_split(uint64_t flat, uint64_t *h, uint64_t *m, uint64_t *s);
 uint64_t ct_now_unix_sec(void);
 uint64_t ct_now_cat_flat(void);
+
+/* virtual crystal */
+void     ct_detach(uint64_t start_unix_sec);
+void     ct_attach(void);
+void     ct_tick(uint64_t delta_sec);
+int      ct_is_detached(void);
 ```
 
 Same conversion ratio (625:54) and decomposition rules as the CLI. Works

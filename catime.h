@@ -27,11 +27,36 @@ uint64_t ct_pack(uint64_t h, uint64_t m, uint64_t s);
 /* Split a flat integer into base-100 H, M, S components (writes via ptrs). */
 void ct_split(uint64_t flat, uint64_t *h, uint64_t *m, uint64_t *s);
 
-/* Current Unix wall-clock seconds (UTC) via CLOCK_REALTIME. */
+/* Current Unix wall-clock seconds (UTC). In attached mode this calls
+ * CLOCK_REALTIME via libc; in detached mode it returns the synthetic
+ * counter (single load, ~1ns). */
 uint64_t ct_now_unix_sec(void);
 
 /* Current cat time-of-day as flat integer (0..999_999). */
 uint64_t ct_now_cat_flat(void);
+
+/*
+ * Detached mode — the "virtual crystal".
+ *
+ * Switches the time source from the hardware clock to a developer-driven
+ * counter. Used for replay, deterministic testing, and warp-speed
+ * simulation (run an entire cat-day in one real second).
+ *
+ * Once detached, ct_now_unix_sec() returns whatever you set/advance.
+ * Format/decompose/conversion APIs all keep working transparently.
+ */
+
+/* Switch to detached mode, anchored at start_unix_sec. */
+void ct_detach(uint64_t start_unix_sec);
+
+/* Switch back to wall-clock-anchored mode. */
+void ct_attach(void);
+
+/* Advance the detached counter by delta_sec. No-op when attached. */
+void ct_tick(uint64_t delta_sec);
+
+/* Returns 1 if currently detached, 0 if attached. */
+int  ct_is_detached(void);
 
 #ifdef __cplusplus
 }
