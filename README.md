@@ -140,6 +140,24 @@ C harness compiled with `-O2`, calling library functions in a tight loop:
 Pure-arithmetic functions are at the noise floor; only `ct_now_*` actually
 costs anything, because they call into libc's `clock_gettime`.
 
+### System vs catime — apples-to-apples
+
+Same workload via stdlib (`clock_gettime` + integer math) vs catime API:
+
+| workload                                        | system (arm64) | catime (arm64) | system (x86) | catime (x86) |
+|-------------------------------------------------|----------------|----------------|--------------|--------------|
+| read wall clock → integer seconds               | 15.97 ns       | **13.25 ns**   | 31.61 ns     | **23.51 ns** |
+| read wall clock + decompose to H:M:S            | **19.39 ns**   | 33.18 ns       | **28.25 ns** | 35.17 ns     |
+| pure pack (no syscall)                          | **0.59 ns**    | 0.88 ns        | **0.50 ns**  | 1.37 ns      |
+
+**Takeaway.** For "what's the unix time?" catime is *faster* than the
+stdlib path because it pulls `tv_sec` directly without the `struct
+timespec` dance. For "what's the time-of-day in HH:MM:SS?" catime is
+~10–15 ns slower, because it pays for one extra integer multiply +
+divide to convert real → cat before decomposing. The fully-formatted
+display delta is small enough to be lost in the next thing you do
+(printf, network send, anything).
+
 ### Fixed-interval (`libcatime_fixed`) — Linux ELF
 
 Not measured here (cross-compiled from macOS, target is Linux). Expected
