@@ -1,3 +1,5 @@
 catime
+catime-x86
 *.o
 *.dSYM/
+
