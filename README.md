@@ -317,3 +317,8 @@ The bundled demos ([main_fixed.s](main_fixed.s),
 [main_x86_fixed.s](main_x86_fixed.s)) are reference implementations of the
 spin-tick pattern as standalone Linux ELF — assemble with clang, link with
 any ELF linker.
+## License
+
+This project is licensed under the [GNU Affero General Public License v3.0](LICENSE),
+with a [licensing addendum](LICENSE-ADDENDUM.md) under which the copyright holder
+reserves the right to issue future versions under revised license terms.
