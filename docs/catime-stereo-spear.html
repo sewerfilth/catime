@@ -1,0 +1,681 @@
+<title>catime — Base-100 Time-of-Day on an Exact 625:54 Integer Lattice</title>
+<style>
+  :root {
+    --ink:#0d1215; --ink-2:#0a0e11; --panel:#141c20; --panel-2:#172126;
+    --line:#24333a; --text:#c6d0cb; --text-dim:#7d8d89;
+    --amber:#ffb454; --amber-soft:#b87b2e; --teal:#54d6c6; --teal-dim:#2f6d68;
+    --grid:rgba(84,214,198,0.10); --glow:rgba(255,180,84,0.30);
+    --good:#7fd67a; --bad:#ff6f91; --rose:#ff6f91; --violet:#9d8bff; --steel:#6f9fd8;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Menlo", monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+    --maxw: 960px;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --ink:#eef2ee; --ink-2:#e4eae6; --panel:#f7faf7; --panel-2:#eef4f1;
+      --line:#cdd8d2; --text:#1c2622; --text-dim:#5c6b65;
+      --amber:#a85f0d; --amber-soft:#c8933f; --teal:#0f8a7e; --teal-dim:#7cc3ba;
+      --grid:rgba(15,138,126,0.13); --glow:rgba(168,95,13,0.20);
+      --good:#1f9e63; --bad:#c23a63; --rose:#c23a63; --violet:#5b47c9; --steel:#2f6bb0;
+    }
+  }
+  :root[data-theme="dark"]{ --ink:#0d1215;--ink-2:#0a0e11;--panel:#141c20;--panel-2:#172126;
+    --line:#24333a;--text:#c6d0cb;--text-dim:#7d8d89;--amber:#ffb454;--amber-soft:#b87b2e;
+    --teal:#54d6c6;--teal-dim:#2f6d68;--grid:rgba(84,214,198,0.10);--glow:rgba(255,180,84,0.30);
+    --good:#7fd67a;--bad:#ff6f91;--rose:#ff6f91;--violet:#9d8bff;--steel:#6f9fd8; }
+  :root[data-theme="light"]{ --ink:#eef2ee;--ink-2:#e4eae6;--panel:#f7faf7;--panel-2:#eef4f1;
+    --line:#cdd8d2;--text:#1c2622;--text-dim:#5c6b65;--amber:#a85f0d;--amber-soft:#c8933f;
+    --teal:#0f8a7e;--teal-dim:#7cc3ba;--grid:rgba(15,138,126,0.13);--glow:rgba(168,95,13,0.20);
+    --good:#1f9e63;--bad:#c23a63;--rose:#c23a63;--violet:#5b47c9;--steel:#2f6bb0; }
+
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--ink); color:var(--text);
+    font-family:var(--sans); line-height:1.62; -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:var(--maxw); margin:0 auto; padding:0 24px; }
+  .bench { background: radial-gradient(120% 80% at 50% -10%, rgba(84,214,198,0.055), transparent 60%), var(--ink); }
+
+  header { padding:70px 0 26px; }
+  .eyebrow { font-family:var(--mono); font-size:12px; letter-spacing:.30em; text-transform:uppercase;
+    color:var(--teal); display:flex; align-items:center; gap:12px; }
+  .eyebrow::before { content:""; width:34px; height:1px; background:var(--teal); opacity:.6; }
+  h1 { font-weight:800; letter-spacing:-0.02em; font-size:clamp(30px,5vw,50px); line-height:1.05;
+    margin:16px 0 0; text-wrap:balance; }
+  h1 em { font-style:normal; color:var(--amber); }
+  .lede { font-size:clamp(16px,2vw,19px); color:var(--text); max-width:66ch; margin:20px 0 0; }
+  .lede b { color:var(--amber); font-weight:600; }
+  .abstract { font-family:var(--mono); font-size:13px; color:var(--text-dim); max-width:74ch;
+    margin:18px 0 0; padding:14px 16px; border:1px solid var(--line); border-radius:10px; background:var(--panel); }
+  .abstract b { color:var(--text); font-weight:600; }
+
+  section { padding:44px 0; border-top:1px solid var(--line); }
+  .kicker { font-family:var(--mono); font-size:12px; letter-spacing:.20em; text-transform:uppercase;
+    color:var(--text-dim); display:flex; align-items:baseline; gap:12px; margin-bottom:6px; }
+  .kicker .n { color:var(--amber); font-weight:700; }
+  h2 { font-size:clamp(22px,3.2vw,30px); font-weight:740; letter-spacing:-0.015em; margin:4px 0 14px; text-wrap:balance; }
+  .prose { max-width:70ch; color:var(--text); }
+  .prose + .prose { margin-top:11px; }
+  .prose b { color:var(--amber); font-weight:600; }
+  .prose .tl { color:var(--teal); font-weight:600; }
+  code { font-family:var(--mono); font-size:.9em; color:var(--teal);
+    background:color-mix(in srgb, var(--teal) 10%, transparent); padding:1px 5px; border-radius:4px; }
+  .eq { font-family:var(--mono); font-size:13.5px; color:var(--text); background:var(--panel-2);
+    border:1px solid var(--line); border-left:3px solid var(--amber); border-radius:8px;
+    padding:12px 14px; margin:16px 0; overflow-x:auto; white-space:nowrap; }
+  .eq .c { color:var(--text-dim); } .eq .k { color:var(--amber); } .eq .v { color:var(--violet); }
+  .eq .t { color:var(--teal); }
+
+  .instrument { margin:22px 0 8px; background:var(--panel); border:1px solid var(--line);
+    border-radius:12px; overflow:hidden; box-shadow:0 1px 0 rgba(255,255,255,0.03) inset, 0 20px 40px -30px #000; }
+  .instrument-bar { display:flex; align-items:center; gap:12px; flex-wrap:wrap; padding:11px 15px;
+    background:var(--panel-2); border-bottom:1px solid var(--line);
+    font-family:var(--mono); font-size:12px; letter-spacing:.05em; color:var(--text-dim); }
+  .instrument-bar .dot { width:8px; height:8px; border-radius:50%; background:var(--amber); box-shadow:0 0 10px var(--glow); }
+  .instrument-bar .title { color:var(--text); letter-spacing:.14em; text-transform:uppercase; }
+  .instrument-bar .spacer { flex:1; }
+  .readout { display:flex; gap:16px; flex-wrap:wrap; }
+  .readout span i { color:var(--amber); font-style:normal; font-weight:700; font-variant-numeric:tabular-nums; }
+  .readout span b { color:var(--teal); font-weight:600; }
+  canvas { display:block; width:100%; height:auto; background:linear-gradient(0deg,var(--ink-2),var(--ink)); }
+
+  .controls { display:flex; gap:16px; flex-wrap:wrap; align-items:center; padding:11px 15px;
+    border-top:1px solid var(--line); background:var(--panel-2); }
+  button { font-family:var(--mono); font-size:11.5px; letter-spacing:.06em; text-transform:uppercase;
+    color:var(--text); background:var(--panel); border:1px solid var(--line); border-radius:7px;
+    padding:7px 12px; cursor:pointer; transition:border-color .15s, color .15s; }
+  button:hover { border-color:var(--amber); color:var(--amber); }
+  button:focus-visible { outline:2px solid var(--teal); outline-offset:2px; }
+  button[aria-pressed="true"] { border-color:var(--teal); color:var(--teal); }
+  button.play { color:var(--ink); background:var(--amber); border-color:var(--amber); font-weight:700; }
+  button.play:hover { filter:brightness(1.08); color:var(--ink); }
+  button.play[aria-pressed="true"] { background:transparent; color:var(--teal); border-color:var(--teal); }
+  .ctl { display:inline-flex; align-items:center; gap:8px; font-family:var(--mono); font-size:12px;
+    color:var(--text-dim); letter-spacing:.04em; }
+  .ctl b { color:var(--amber); font-weight:700; font-variant-numeric:tabular-nums; min-width:2ch; text-align:right; }
+  input[type="range"] { accent-color:var(--amber); width:130px; }
+  select { font-family:var(--mono); font-size:11.5px; color:var(--text); background:var(--panel);
+    border:1px solid var(--line); border-radius:6px; padding:5px 7px; }
+  .caption { font-family:var(--mono); font-size:12px; color:var(--text-dim); margin-top:12px; max-width:74ch; line-height:1.55; }
+  .caption b { color:var(--text); font-weight:600; }
+  .caption .src { color:var(--teal); }
+
+  .rules { display:grid; grid-template-columns:repeat(2,1fr); gap:1px; background:var(--line);
+    border:1px solid var(--line); border-radius:12px; overflow:hidden; margin-top:20px; }
+  @media (max-width:640px){ .rules { grid-template-columns:1fr; } }
+  .rule { background:var(--panel); padding:15px 17px; }
+  .rule .n { font-family:var(--mono); font-size:11px; color:var(--teal); font-weight:700; letter-spacing:.08em; }
+  .rule .h { font-weight:700; margin:3px 0 5px; font-size:14px; }
+  .rule p { margin:0; font-size:12.5px; color:var(--text-dim); }
+  .rule code { font-size:.85em; }
+
+  footer { padding:38px 0 60px; color:var(--text-dim); font-family:var(--mono); font-size:12px;
+    border-top:1px solid var(--line); line-height:1.6; }
+  footer b { color:var(--text); } footer a { color:var(--teal); }
+  @media (max-width:560px){ header { padding-top:46px; } }
+</style>
+
+<div class="bench">
+<div class="wrap">
+
+  <header>
+    <div class="eyebrow">catime · stereo-spear primer · v1</div>
+    <h1>Base-100 time-of-day on an<br>exact <em>625:54</em> integer lattice.</h1>
+    <p class="lede">catime slices the day into <b>100 hours × 100 minutes × 100 seconds</b> — a flat
+      6-digit <code>HHMMSS</code> that self-segments by base-100 — and converts to and from wall time with a
+      single reduced integer ratio, <code>625/54</code>. The four instruments below are the actual arithmetic:
+      the conversion lattice and its round-trip residue, decimal self-segmentation against base-60, the
+      fixed-interval PHC grid that keeps hosts in lock-step, and the detached "virtual crystal" that warps a
+      whole cat-day into a quarter-millisecond. Not a pitch — the numbers the asm computes.</p>
+    <p class="abstract"><b>Scope.</b> Every plotted value is computed live from catime's own integer rules
+      (seeded RNG only drives jitter/offsets), reproducing the qualitative regime. Ratios, byte layout, and
+      API names are taken verbatim from <span class="tl">catime.h</span>, <span class="tl">catime_fixed.h</span>,
+      and the arm64/x86_64 cores <span class="tl">lib_arm64.s</span> / <span class="tl">lib_fixed_x86.s</span>.
+      Where clock jitter is illustrative it is labelled <b>schematic</b>.</p>
+  </header>
+
+  <!-- ============ FIGURE I — CONVERSION LATTICE ============ -->
+  <section>
+    <div class="kicker"><span class="n">I</span> conversion · why real→cat→real is exact but cat→real→cat is not</div>
+    <h2>One reduced ratio, 625:54 — and the lattice it stamps on the day.</h2>
+    <p class="prose">The whole system is one identity: <code>1 day = 86,400 real s = 1,000,000 cat s</code>,
+      and <code>gcd(86400, 1000000) = 1600</code>, so the map is the reduced ratio <b>625/54</b>. Forward
+      (<code>ct_real_to_cat</code>) is a truncating <code>×625/54</code>; reverse
+      (<code>ct_cat_to_real</code>) adds <code>625/2</code> before the <code>/625</code> divide — it is
+      <b>correctly rounded</b>. Because one real second spans <code>625/54 ≈ 11.574</code> cat units, the
+      mapping is a staircase, not a line: many cat values share a real second.</p>
+    <div class="eq">cat = <span class="k">⌊real·625/54⌋</span> &nbsp;·&nbsp;
+      real = <span class="t">⌊(cat·54 + 312)/625⌋</span> &nbsp;·&nbsp;
+      <span class="c">real→cat→real = identity</span>, &nbsp;
+      <span class="v">cat→real→cat drifts ≤ ~6</span></div>
+    <p class="prose">Left: the conversion staircase over a window of the day — cat units against real seconds,
+      with the current sample marked. Right: the two round-trip residues. <span style="color:var(--good)">real→cat→real</span>
+      pins to zero across the tested range; <span style="color:var(--violet)">cat→real→cat</span> is a
+      sawtooth bounded by the lattice pitch — <b>this is the lattice, not a rounding loss</b>.</p>
+
+    <div class="instrument">
+      <div class="instrument-bar">
+        <span class="dot"></span><span class="title">625:54 lattice · staircase + round-trip residue</span>
+        <span class="spacer"></span>
+        <span class="readout">
+          <span>real <i id="catime-lat-real">—</i> s</span>
+          <span>cat <i id="catime-lat-cat">—</i></span>
+          <span>r→c→r <b id="catime-lat-rt">—</b></span>
+          <span>c→r→c max <i id="catime-lat-drift">—</i></span>
+        </span>
+      </div>
+      <canvas id="catime-lattice" width="920" height="400"></canvas>
+      <div class="controls">
+        <span class="ctl">real s <input id="catime-lat-slider" type="range" min="0" max="86399" value="3600"><b id="catime-lat-sv">3600</b></span>
+        <span class="ctl">window <input id="catime-lat-zoom" type="range" min="20" max="600" value="120"><b id="catime-lat-zoomv">120</b></span>
+        <span class="ctl" style="margin-left:auto">1 real s = 625/54 ≈ 11.574 cat</span>
+      </div>
+    </div>
+    <div class="caption"><b>Read the right panel:</b> the flat <span class="src">green</span> line is the
+      guarantee — <code>ct_cat_to_real(ct_real_to_cat(r)) == r</code> everywhere, thanks to the <code>+625/2</code>
+      round. The <span style="color:var(--violet)">violet</span> sawtooth is the price of a finer grid:
+      <code>cat→real→cat</code> can move by a few units because ~11.574 cat-units collapse onto one real second.
+      Same arithmetic runs in <span class="src">lib_arm64.s</span> as a magic-multiply (no <code>udiv</code>).</div>
+  </section>
+
+  <!-- ============ FIGURE II — BASE-100 SELF-SEGMENTATION ============ -->
+  <section>
+    <div class="kicker"><span class="n">II</span> format · a flat integer that decomposes by mod-100</div>
+    <h2>HHMMSS reads itself. The day sliced decimally vs sliced by 60.</h2>
+    <p class="prose">A cat time-of-day is a single integer in <code>0…999,999</code>. <code>ct_pack</code> is
+      <code>h·10000 + m·100 + s</code>; <code>ct_split</code> peels it back with three <code>mod-100</code>
+      steps — so <code>152030</code> <i>is</i> <code>15:20:30</code> cat, no separators. The real clock nests
+      three different radices (<code>/60, /60, /24</code>); catime nests one. The strips below place every
+      hour boundary of each scheme on the same day axis: <b>cat-hours are 864 s apart and evenly spaced</b>;
+      real-hours are 3600 s apart — the two grids are incommensurate, which is exactly why you must treat
+      cat time-of-day as <code>real × 1,000,000 / 86,400</code> and never map "cat-minute" onto "minute".</p>
+
+    <div class="instrument">
+      <div class="instrument-bar">
+        <span class="dot"></span><span class="title">base-100 decompose · odometer + hour grids</span>
+        <span class="spacer"></span>
+        <span class="readout">
+          <span>cat <i id="catime-cat-tod">—</i></span>
+          <span>real <b id="catime-real-tod">—</b></span>
+          <span>flat <i id="catime-flat">—</i>/10⁶</span>
+        </span>
+      </div>
+      <canvas id="catime-base100" width="920" height="380"></canvas>
+      <div class="controls">
+        <span class="ctl">time of day <input id="catime-tod" type="range" min="0" max="86399" value="55476"><b id="catime-todv">15:24</b></span>
+        <button id="catime-grid-mode" aria-pressed="true">grids: both</button>
+        <span class="ctl" style="margin-left:auto">1 cat-hr = 864 s · 1 cat-s = 0.0864 s</span>
+      </div>
+    </div>
+    <div class="caption"><b>Watch the odometer wheels:</b> as you drag, the cat <span class="src">SS</span> wheel
+      turns <code>11.574×</code> faster than the real seconds wheel — same day, finer decimal teeth. The two
+      hour-grids only coincide at <code>0</code> and <code>86,400</code>; every other alignment is a beat.
+      Packing/splitting is <code>ct_pack</code>/<code>ct_split</code> in <span class="src">catime.h</span>,
+      formatted by the 200-byte two-digit-pair table in <span class="src">main.s</span> (~2 ns).</div>
+  </section>
+
+  <!-- ============ FIGURE III — FIXED-INTERVAL GRID ============ -->
+  <section>
+    <div class="kicker"><span class="n">III</span> fixed-interval · aligning independent hosts to one wall-clock grid</div>
+    <h2>cf_next_grid_ns puts every host on the same tick — if the interval clears the spread.</h2>
+    <p class="prose">For PTP-grade timing, <code>libcatime_fixed</code> reads <code>CLOCK_REALTIME</code>
+      (or a NIC's PHC via <code>cf_open_phc</code> → <code>cf_phc_clockid</code> → <code>cf_now_dynamic_ns</code>)
+      and snaps to an <b>absolute</b> grid: <code>cf_next_grid_ns</code> returns the smallest
+      <code>k·interval</code> strictly greater than <code>now</code>. Because the grid is anchored to the epoch,
+      hosts whose clocks differ by less than one interval all compute the <i>same</i> next tick — lock-step
+      without a coordinator. <code>cf_wait_until_ns</code> then spins to it; the overshoot it returns is the
+      per-tick <b>drift</b> of that spin.</p>
+    <div class="eq"><span class="k">cf_next_grid_ns(now,I)</span> = <span class="t">(⌊now/I⌋ + 1)·I</span> &nbsp;·&nbsp;
+      <span class="c">lock-step ⇔ max|offsetᵢ − offsetⱼ| &lt; I</span> &nbsp;·&nbsp;
+      <span class="v">drift = cf_wait_until_ns(t) − t ≥ 0</span></div>
+
+    <div class="instrument">
+      <div class="instrument-bar">
+        <span class="dot"></span><span class="title">PHC grid · lock-step alignment + spin drift</span>
+        <span class="spacer"></span>
+        <span class="readout">
+          <span>aligned <i id="cf-aligned">—</i></span>
+          <span>offset spread <i id="cf-spread">—</i> ns</span>
+          <span>median drift <b id="cf-drift">—</b> ns</span>
+        </span>
+      </div>
+      <canvas id="catime-grid" width="920" height="420"></canvas>
+      <div class="controls">
+        <span class="ctl">interval <input id="cf-interval" type="range" min="200" max="5000" step="100" value="1000"><b id="cf-intervalv">1000</b>ns</span>
+        <span class="ctl">clock spread <input id="cf-jitter" type="range" min="0" max="4000" step="50" value="600"><b id="cf-jitterv">600</b>ns</span>
+        <span class="ctl">hosts <input id="cf-hosts" type="range" min="2" max="12" value="6"><b id="cf-hostsv">6</b></span>
+        <button id="cf-resample">resample clocks</button>
+      </div>
+    </div>
+    <div class="caption"><b>Read the vertical grid lines:</b> each host's local <code>now</code> (dot) draws an
+      arrow to <i>its</i> computed next-grid tick. While the <span class="src">clock spread &lt; interval</span>
+      all arrows converge on one line — <span style="color:var(--good)">aligned</span>. Widen the spread past
+      the interval and a host slips to the next line — <span style="color:var(--rose)">split</span>, the failure
+      mode <code>cf_next_grid_ns</code> is meant to expose. Bottom strip: the spin-loop <b>drift</b> histogram
+      (<code>actual − target ≥ 0</code>), dominated by <code>cf_now_ns</code> read cost (<span class="src">catime_fixed.h</span>).</div>
+  </section>
+
+  <!-- ============ FIGURE IV — VIRTUAL CRYSTAL ============ -->
+  <section>
+    <div class="kicker"><span class="n">IV</span> detached · swap the hardware clock for a developer-driven counter</div>
+    <h2>The virtual crystal: one cat-day, deterministic, in 0.244 ms.</h2>
+    <p class="prose"><code>ct_detach(anchor)</code> repoints every <code>ct_now_*</code> from the hardware clock to
+      a counter you <code>ct_tick</code> yourself. Attached, <code>ct_now_cat_flat</code> pays ~31 ns and
+      inherits NTP slew and kernel jitter; detached, it's a single load from BSS — <b>~2.3 ns, deterministic</b>.
+      Stepping 86,400 cat-second ticks (one real day) measured at <b>0.244 ms</b> on arm64 — a
+      <b>354-million× warp factor</b>. Left: the cat-day counter filling <code>0…1,000,000</code>; the flat
+      <code>HHMMSS</code> updates through <code>ct_split</code> the whole way. Right: the same trace
+      <span style="color:var(--rose)">attached</span> (jitter, drift) vs <span style="color:var(--violet)">detached</span>
+      (clean staircase, same input → same trace).</p>
+
+    <div class="instrument">
+      <div class="instrument-bar">
+        <span class="dot"></span><span class="title">virtual crystal · warp counter + attached/detached trace</span>
+        <span class="spacer"></span>
+        <span class="readout">
+          <span>sim cat-s <i id="catime-cry-sim">0</i></span>
+          <span>flat <i id="catime-cry-flat">000000</i></span>
+          <span>warp <b id="catime-cry-warp">—</b>×</span>
+        </span>
+      </div>
+      <canvas id="catime-crystal" width="920" height="400"></canvas>
+      <div class="controls">
+        <button id="catime-cry-play" class="play" aria-pressed="false">▶ run cat-day</button>
+        <button id="catime-cry-step">tick +1 cat-hr</button>
+        <span class="ctl">source
+          <select id="catime-cry-mode"><option value="detached">detached (counter)</option><option value="attached">attached (wall clock)</option></select></span>
+        <button id="catime-cry-reset">reset to midnight</button>
+      </div>
+    </div>
+    <div class="caption"><b>The point is the right panel:</b> attached, the trace wobbles — every read costs a
+      syscall and carries clock jitter, so no two runs match bit-for-bit. Detached, it is a straight
+      counter-driven staircase: <code>ct_detach → ct_tick → ct_now_cat_flat</code> replays identically every
+      time, the property golden-trace tests and warp-speed simulation depend on. The <span class="src">warp</span>
+      readout is (sim cat-seconds)/(0.244 ms/86,400 per tick) — how much faster than Earth the crystal spins
+      (<span class="src">README · detached mode</span>).</div>
+  </section>
+
+  <!-- ============ CLOSING ============ -->
+  <section>
+    <div class="kicker"><span class="n">·</span> invariants the implementation holds</div>
+    <h2>What every conversion, format, and clock path must preserve.</h2>
+    <div class="rules">
+      <div class="rule"><div class="n">§1</div><div class="h">One ratio, reduced</div>
+        <p>All conversion is <code>625/54</code> (= <code>1,000,000 : 86,400</code> ÷ <code>gcd 1600</code>). Works on any consistent unit — s, ms, ns — the integer ratio doesn't care.</p></div>
+      <div class="rule"><div class="n">§2</div><div class="h">Reverse is correctly rounded</div>
+        <p><code>ct_cat_to_real</code> adds <code>625/2</code> before <code>/625</code>, so <code>real→cat→real</code> is exact over range. <code>cat→real→cat</code> drift is the lattice, not a bug.</p></div>
+      <div class="rule"><div class="n">§3</div><div class="h">Flat integer self-segments</div>
+        <p><code>ct_pack</code>/<code>ct_split</code> by mod-100; <code>0…999,999</code> reads as <code>HHMMSS</code> with no separators. Formatter is a 200-byte pair table, ~2 ns.</p></div>
+      <div class="rule"><div class="n">§4</div><div class="h">The grid is absolute</div>
+        <p><code>cf_next_grid_ns</code> anchors to the epoch, so hosts lock-step with no coordinator — provided the clock spread stays under one interval.</p></div>
+      <div class="rule"><div class="n">§5</div><div class="h">Detached is deterministic</div>
+        <p>Same anchor + same ticks → byte-identical trace; zero NTP/jitter. Attached hot path is unchanged (single predicted-not-taken <code>cmpq</code>).</p></div>
+      <div class="rule"><div class="n">§6</div><div class="h">Two arches, one arithmetic</div>
+        <p>arm64 + x86_64 cores compute identical results; fixed-interval kernels are byte-for-byte the base <code>ct_*</code> instructions. Magic-multiply, no runtime <code>udiv</code>.</p></div>
+    </div>
+  </section>
+
+  <footer>
+    <p><b>Pipeline in one line:</b> real seconds <code>×625/54</code> → cat flat <code>0…10⁶</code> →
+      <code>ct_split</code> mod-100 → <code>HHMMSS</code>; fixed-interval snaps to <code>cf_next_grid_ns</code>
+      and spins via <code>cf_wait_until_ns</code>; detach swaps the source for a counter you tick.</p>
+    <p style="margin-top:12px">API: <b>catime.h</b> · <b>catime_fixed.h</b> · cores: <b>lib_arm64.s</b> ·
+      <b>lib_x86.s</b> · <b>lib_fixed_arm64.s</b> · <b>lib_fixed_x86.s</b> · CLI/format: <b>main.s</b> ·
+      manual: <b>docs/catime-system-manual.html</b>. Toggle theme — instrument in the dark, blueprint in the light.</p>
+  </footer>
+
+</div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  function css(n){ return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+  function fit(c){
+    var rect=c.getBoundingClientRect(), dpr=Math.min(window.devicePixelRatio||1,2);
+    var w=Math.max(320,Math.round(rect.width)), h=Math.round(w*(c.height/c.width));
+    if(c._cssW===w) return c.getContext("2d");
+    c._cssW=w; c.width=Math.round(w*dpr); c.height=Math.round(h*dpr); c.style.height=h+"px";
+    var ctx=c.getContext("2d"); ctx.setTransform(dpr,0,0,dpr,0,0); c._logW=w; c._logH=h; return ctx;
+  }
+  function rng(seed){ var s=(seed>>>0)||1; return function(){ s=(s*1664525+1013904223)>>>0; return s/4294967296; }; }
+  function gauss(r){ var u=Math.max(1e-9,r()), v=r(); return Math.sqrt(-2*Math.log(u))*Math.cos(6.2831853*v); }
+  function pad2(n){ return (n<10?"0":"")+n; }
+  function pad6(n){ n=""+n; while(n.length<6) n="0"+n; return n; }
+
+  // ---- catime integer core (mirrors lib_*.s exactly) ----
+  function r2c(real){ return Math.floor(real*625/54); }          // ct_real_to_cat  (truncating)
+  function c2r(cat){ return Math.floor((cat*54 + 312)/625); }    // ct_cat_to_real  (+625/2 rounded)
+  function catFlat(catSec){ var f=((catSec%1000000)+1000000)%1000000;
+    var h=Math.floor(f/10000), m=Math.floor(f/100)%100, s=f%100; return {f:f,h:h,m:m,s:s}; }
+  function realHMS(realSec){ var t=((realSec%86400)+86400)%86400;
+    return {h:Math.floor(t/3600), m:Math.floor(t/60)%60, s:t%60}; }
+
+  // shared axis frame with ticks
+  function frame(ctx, box, opts){
+    ctx.strokeStyle=css("--line"); ctx.lineWidth=1;
+    ctx.strokeRect(box.x, box.y, box.w, box.h);
+    ctx.strokeStyle=css("--grid");
+    var nx=opts.nx||4, ny=opts.ny||4, i;
+    for(i=1;i<nx;i++){ var gx=box.x+box.w*i/nx; ctx.beginPath(); ctx.moveTo(gx,box.y); ctx.lineTo(gx,box.y+box.h); ctx.stroke(); }
+    for(i=1;i<ny;i++){ var gy=box.y+box.h*i/ny; ctx.beginPath(); ctx.moveTo(box.x,gy); ctx.lineTo(box.x+box.w,gy); ctx.stroke(); }
+    ctx.fillStyle=css("--text-dim"); ctx.font="10.5px "+css("--mono");
+    if(opts.title){ ctx.textAlign="left"; ctx.fillStyle=css("--text"); ctx.font="11px "+css("--mono"); ctx.fillText(opts.title, box.x, box.y-8); }
+    ctx.fillStyle=css("--text-dim"); ctx.font="10.5px "+css("--mono");
+    if(opts.xlabel){ ctx.textAlign="center"; ctx.fillText(opts.xlabel, box.x+box.w/2, box.y+box.h+26); }
+    if(opts.ylabel){ ctx.save(); ctx.translate(box.x-38, box.y+box.h/2); ctx.rotate(-Math.PI/2);
+      ctx.textAlign="center"; ctx.fillText(opts.ylabel, 0, 0); ctx.restore(); }
+  }
+
+  /* ==================== FIGURE I — 625:54 lattice ==================== */
+  (function(){
+    var c=document.getElementById("catime-lattice"); if(!c) return;
+    var slider=document.getElementById("catime-lat-slider"), sv=document.getElementById("catime-lat-sv");
+    var zoom=document.getElementById("catime-lat-zoom"), zv=document.getElementById("catime-lat-zoomv");
+    var realEl=document.getElementById("catime-lat-real"), catEl=document.getElementById("catime-lat-cat");
+    var rtEl=document.getElementById("catime-lat-rt"), driftEl=document.getElementById("catime-lat-drift");
+
+    function render(){
+      var ctx=fit(c), CW=c._logW, CH=c._logH; ctx.clearRect(0,0,CW,CH);
+      var r0=+slider.value, win=+zoom.value; sv.textContent=r0; zv.textContent=win;
+      var lo=Math.max(0, r0-Math.floor(win/2)), hi=Math.min(86399, lo+win);
+      var gap=52, pad=56, top=30, bot=52, pw=(CW-pad-gap-24)/2, ph=CH-top-bot;
+      var A={x:pad,y:top,w:pw,h:ph}, B={x:pad+pw+gap,y:top,w:pw,h:ph};
+
+      // ---- Panel A: conversion staircase ----
+      frame(ctx,A,{nx:4,ny:4,title:"conversion staircase (window "+win+" s)",xlabel:"real s",ylabel:"cat units"});
+      var clo=r2c(lo), chi=r2c(hi);
+      function AX(r){ return A.x+A.w*(r-lo)/(hi-lo); }
+      function AY(cat){ return A.y+A.h*(1-(cat-clo)/(chi-clo||1)); }
+      // ideal line
+      ctx.strokeStyle=css("--teal-dim"); ctx.setLineDash([5,4]); ctx.lineWidth=1;
+      ctx.beginPath(); ctx.moveTo(AX(lo),AY(clo)); ctx.lineTo(AX(hi),AY(chi)); ctx.stroke(); ctx.setLineDash([]);
+      // staircase: cat = floor(real*625/54) sampled at fine real resolution
+      ctx.strokeStyle=css("--amber"); ctx.lineWidth=1.8; ctx.beginPath();
+      var steps=Math.min(600, (hi-lo)*4), started=false;
+      for(var i=0;i<=steps;i++){ var rr=lo+(hi-lo)*i/steps; var cc=r2c(rr);
+        var x=AX(rr), y=AY(cc); if(!started){ctx.moveTo(x,y);started=true;} else ctx.lineTo(x,y); }
+      ctx.stroke();
+      // current sample
+      var cc0=r2c(r0);
+      if(r0>=lo && r0<=hi){ ctx.fillStyle=css("--teal");
+        ctx.beginPath(); ctx.arc(AX(r0),AY(cc0),4,0,6.2832); ctx.fill();
+        ctx.strokeStyle=css("--teal"); ctx.setLineDash([3,3]); ctx.lineWidth=1;
+        ctx.beginPath(); ctx.moveTo(AX(r0),A.y+A.h); ctx.lineTo(AX(r0),AY(cc0)); ctx.lineTo(A.x,AY(cc0)); ctx.stroke(); ctx.setLineDash([]); }
+      ctx.fillStyle=css("--text-dim"); ctx.font="10px "+css("--mono"); ctx.textAlign="left";
+      ctx.fillText("slope 625/54 ≈ 11.574", A.x+6, A.y+14);
+
+      // ---- Panel B: round-trip residues over the window ----
+      frame(ctx,B,{nx:4,ny:4,title:"round-trip residue over window",xlabel:"index in window",ylabel:"Δ units"});
+      var rtVals=[], crcVals=[], maxDrift=0;
+      for(var k=lo;k<=hi;k++){ rtVals.push(c2r(r2c(k))-k);
+        var cat=r2c(k); var d=r2c(c2r(cat))-cat; crcVals.push(d); if(Math.abs(d)>maxDrift)maxDrift=Math.abs(d); }
+      var lim=Math.max(2, maxDrift*1.3);
+      function BX(i){ return B.x+B.w*i/(rtVals.length-1||1); }
+      function BY(v){ return B.y+B.h*(1-(v+lim)/(2*lim)); }
+      ctx.strokeStyle=css("--line"); ctx.beginPath(); ctx.moveTo(B.x,BY(0)); ctx.lineTo(B.x+B.w,BY(0)); ctx.stroke();
+      // cat->real->cat sawtooth
+      ctx.strokeStyle=css("--violet"); ctx.lineWidth=1.6; ctx.beginPath();
+      for(var a=0;a<crcVals.length;a++){ var x=BX(a),y=BY(crcVals[a]); if(a===0)ctx.moveTo(x,y); else ctx.lineTo(x,y);} ctx.stroke();
+      // real->cat->real (flat zero)
+      ctx.strokeStyle=css("--good"); ctx.lineWidth=2.4; ctx.beginPath();
+      for(var b=0;b<rtVals.length;b++){ var x2=BX(b),y2=BY(rtVals[b]); if(b===0)ctx.moveTo(x2,y2); else ctx.lineTo(x2,y2);} ctx.stroke();
+      // y ticks
+      ctx.fillStyle=css("--text-dim"); ctx.font="10px "+css("--mono"); ctx.textAlign="right";
+      [-lim,0,lim].forEach(function(v){ ctx.fillText(v.toFixed(0), B.x-5, BY(v)+3); });
+      ctx.font="10px "+css("--mono"); ctx.textAlign="left";
+      ctx.fillStyle=css("--good"); ctx.fillText("● real→cat→real (0)", B.x+6, B.y+13);
+      ctx.fillStyle=css("--violet"); ctx.fillText("● cat→real→cat", B.x+6, B.y+27);
+
+      realEl.textContent=r0; catEl.textContent=cc0;
+      var rtc=c2r(cc0)-r0; rtEl.textContent=(rtc===0?"exact (0)":(rtc>0?"+":"")+rtc);
+      rtEl.style.color=rtc===0?css("--good"):css("--rose");
+      driftEl.textContent="±"+maxDrift;
+    }
+    slider.addEventListener("input",render); zoom.addEventListener("input",render);
+    window.addEventListener("resize",render); render();
+  })();
+
+  /* ==================== FIGURE II — base-100 decompose ==================== */
+  (function(){
+    var c=document.getElementById("catime-base100"); if(!c) return;
+    var tod=document.getElementById("catime-tod"), todv=document.getElementById("catime-todv");
+    var modeBtn=document.getElementById("catime-grid-mode");
+    var catEl=document.getElementById("catime-cat-tod"), realEl=document.getElementById("catime-real-tod"), flatEl=document.getElementById("catime-flat");
+    var mode=2; // 0 real,1 cat,2 both
+
+    function wheel(ctx,cx,cy,val,mod,label,color){
+      // odometer digit pair
+      ctx.fillStyle=css("--panel-2"); ctx.strokeStyle=css("--line");
+      var w=52,h=40; ctx.beginPath(); ctx.rect(cx-w/2,cy-h/2,w,h); ctx.fill(); ctx.stroke();
+      ctx.fillStyle=color; ctx.font="20px "+css("--mono"); ctx.textAlign="center"; ctx.textBaseline="middle";
+      ctx.fillText(pad2(val), cx, cy+1);
+      ctx.fillStyle=css("--text-dim"); ctx.font="9.5px "+css("--mono"); ctx.textBaseline="alphabetic";
+      ctx.fillText(label+" /"+mod, cx, cy-h/2-6);
+      ctx.textBaseline="alphabetic";
+    }
+
+    function render(){
+      var ctx=fit(c), CW=c._logW, CH=c._logH; ctx.clearRect(0,0,CW,CH);
+      var realSec=+tod.value;
+      var cat=catFlat(r2c(realSec)); var rl=realHMS(realSec);
+      todv.textContent=pad2(rl.h)+":"+pad2(rl.m);
+
+      // ---- odometers ----
+      var oy=64;
+      ctx.fillStyle=css("--text"); ctx.font="11px "+css("--mono"); ctx.textAlign="left"; ctx.textBaseline="alphabetic";
+      ctx.fillText("cat  ct_split(flat) — mod-100 × 3", 56, oy-30);
+      wheel(ctx,120,oy,cat.h,100,"HH",css("--amber"));
+      ctx.fillStyle=css("--text-dim"); ctx.font="20px "+css("--mono"); ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(":",162,oy+1);
+      wheel(ctx,204,oy,cat.m,100,"MM",css("--amber"));
+      ctx.fillStyle=css("--text-dim"); ctx.textBaseline="middle"; ctx.fillText(":",246,oy+1);
+      wheel(ctx,288,oy,cat.s,100,"SS",css("--amber"));
+
+      ctx.fillStyle=css("--text"); ctx.font="11px "+css("--mono"); ctx.textAlign="left"; ctx.textBaseline="alphabetic";
+      ctx.fillText("real  /60 · /60 · /24", 560, oy-30);
+      wheel(ctx,624,oy,rl.h,24,"HH",css("--steel"));
+      ctx.fillStyle=css("--text-dim"); ctx.font="20px "+css("--mono"); ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(":",666,oy+1);
+      wheel(ctx,708,oy,rl.m,60,"MM",css("--steel"));
+      ctx.fillStyle=css("--text-dim"); ctx.textBaseline="middle"; ctx.fillText(":",750,oy+1);
+      wheel(ctx,792,oy,rl.s,60,"SS",css("--steel"));
+      ctx.textBaseline="alphabetic";
+
+      // ---- day axis with incommensurate hour grids ----
+      var ax=56, aw=CW-56-24, ay=170, ah=150;
+      var lane1=ay+34, lane2=ay+96;
+      function DX(sec){ return ax+aw*sec/86400; }
+      ctx.strokeStyle=css("--line"); ctx.beginPath(); ctx.moveTo(ax,ay+ah); ctx.lineTo(ax+aw,ay+ah); ctx.stroke();
+      ctx.fillStyle=css("--text-dim"); ctx.font="10px "+css("--mono"); ctx.textAlign="center";
+      ctx.fillText("one day  ·  0 → 86,400 real s  =  0 → 1,000,000 cat s", ax+aw/2, ay+ah+22);
+
+      // cat-hour grid: every 864 s (100 lines) — draw every 4th for legibility, current lane at lane1
+      if(mode!==0){
+        ctx.strokeStyle=css("--amber-soft"); ctx.globalAlpha=0.5; ctx.lineWidth=1;
+        for(var chh=0;chh<=100;chh+=2){ var sec=chh*864; var x=DX(sec);
+          ctx.beginPath(); ctx.moveTo(x,lane1-14); ctx.lineTo(x,lane1+14); ctx.stroke(); }
+        ctx.globalAlpha=1; ctx.fillStyle=css("--amber"); ctx.textAlign="left"; ctx.font="10px "+css("--mono");
+        ctx.fillText("cat-hours · 864 s pitch · even", ax, lane1-22);
+      }
+      // real-hour grid: every 3600 s (24 lines) at lane2
+      if(mode!==1){
+        ctx.strokeStyle=css("--steel"); ctx.globalAlpha=0.6; ctx.lineWidth=1;
+        for(var rh=0;rh<=24;rh++){ var sec2=rh*3600; var x2=DX(sec2);
+          ctx.beginPath(); ctx.moveTo(x2,lane2-14); ctx.lineTo(x2,lane2+14); ctx.stroke(); }
+        ctx.globalAlpha=1; ctx.fillStyle=css("--steel"); ctx.textAlign="left"; ctx.font="10px "+css("--mono");
+        ctx.fillText("real-hours · 3600 s pitch", ax, lane2-22);
+      }
+      // cursor
+      var cx=DX(realSec);
+      ctx.strokeStyle=css("--teal"); ctx.lineWidth=1.6; ctx.setLineDash([4,3]);
+      ctx.beginPath(); ctx.moveTo(cx,ay+8); ctx.lineTo(cx,ay+ah); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle=css("--teal"); ctx.beginPath(); ctx.arc(cx,ay+8,3.5,0,6.2832); ctx.fill();
+
+      catEl.textContent=pad2(cat.h)+":"+pad2(cat.m)+":"+pad2(cat.s);
+      realEl.textContent=pad2(rl.h)+":"+pad2(rl.m)+":"+pad2(rl.s);
+      flatEl.textContent=pad6(cat.f);
+    }
+    tod.addEventListener("input",render);
+    modeBtn.addEventListener("click",function(){ mode=(mode+1)%3;
+      modeBtn.textContent="grids: "+(mode===0?"cat":mode===1?"real":"both");
+      modeBtn.setAttribute("aria-pressed",String(mode===2)); render(); });
+    window.addEventListener("resize",render); render();
+  })();
+
+  /* ==================== FIGURE III — fixed-interval grid ==================== */
+  (function(){
+    var c=document.getElementById("catime-grid"); if(!c) return;
+    var iv=document.getElementById("cf-interval"), ivv=document.getElementById("cf-intervalv");
+    var jit=document.getElementById("cf-jitter"), jitv=document.getElementById("cf-jitterv");
+    var hs=document.getElementById("cf-hosts"), hsv=document.getElementById("cf-hostsv");
+    var reseed=document.getElementById("cf-resample");
+    var alnEl=document.getElementById("cf-aligned"), spreadEl=document.getElementById("cf-spread"), driftEl=document.getElementById("cf-drift");
+    var seed=0x0CA7;
+
+    function nextGrid(now,I){ return (Math.floor(now/I)+1)*I; } // cf_next_grid_ns
+
+    function render(){
+      var ctx=fit(c), CW=c._logW, CH=c._logH; ctx.clearRect(0,0,CW,CH);
+      var I=+iv.value, spread=+jit.value, N=+hs.value; ivv.textContent=I; jitv.textContent=spread; hsv.textContent=N;
+      var r=rng(seed);
+      // a base "now" placed so the window shows a couple of grid lines
+      var base = 20*I + Math.floor(r()*I);
+      var offs=[]; for(var i=0;i<N;i++){ offs.push(Math.round((r()-0.5)*spread)); }
+      var nows=offs.map(function(o){ return base+o; });
+      var ticks=nows.map(function(n){ return nextGrid(n,I); });
+      var minTick=Math.min.apply(null,ticks), maxTick=Math.max.apply(null,ticks);
+      var aligned = (minTick===maxTick);
+
+      // timeline window
+      var ax=56, aw=CW-56-24, ay=44, ah=CH-44-150;
+      var lo=base-1.6*I, hi=base+2.6*I;
+      function TX(t){ return ax+aw*(t-lo)/(hi-lo); }
+      // grid lines k*I
+      ctx.font="10px "+css("--mono");
+      for(var k=Math.ceil(lo/I);k<=Math.floor(hi/I);k++){ var gx=TX(k*I);
+        ctx.strokeStyle=css("--line"); ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(gx,ay); ctx.lineTo(gx,ay+ah); ctx.stroke();
+        ctx.fillStyle=css("--text-dim"); ctx.textAlign="center"; ctx.fillText(k+"·I", gx, ay-6); }
+      // host rows
+      var rowH=ah/(N+1);
+      for(var h=0;h<N;h++){ var y=ay+rowH*(h+1);
+        var nx=TX(nows[h]), tx=TX(ticks[h]);
+        var thisAligned = (ticks[h]===minTick && aligned) || (ticks[h]===ticks[0]);
+        var col = aligned?css("--good"):(ticks[h]===Math.min.apply(null,ticks)?css("--teal"):css("--rose"));
+        // arrow now -> its grid tick
+        ctx.strokeStyle=col; ctx.lineWidth=1.6; ctx.globalAlpha=0.85;
+        ctx.beginPath(); ctx.moveTo(nx,y); ctx.lineTo(tx,y); ctx.stroke();
+        // arrowhead
+        ctx.beginPath(); ctx.moveTo(tx,y); ctx.lineTo(tx-6,y-4); ctx.lineTo(tx-6,y+4); ctx.closePath(); ctx.fillStyle=col; ctx.fill();
+        ctx.globalAlpha=1;
+        // now dot
+        ctx.fillStyle=css("--amber"); ctx.beginPath(); ctx.arc(nx,y,3.2,0,6.2832); ctx.fill();
+        ctx.fillStyle=css("--text-dim"); ctx.font="9.5px "+css("--mono"); ctx.textAlign="right";
+        ctx.fillText("host "+h+" ("+(offs[h]>=0?"+":"")+offs[h]+")", ax-6, y+3);
+      }
+      ctx.fillStyle=css("--amber"); ctx.font="10px "+css("--mono"); ctx.textAlign="left";
+      ctx.fillText("● host now", ax, ay+ah+18);
+      ctx.fillStyle=aligned?css("--good"):css("--rose");
+      ctx.fillText(aligned?"→ all snap to one grid line (lock-step)":"→ a host slipped to the next line (spread ≥ interval)", ax+90, ay+ah+18);
+
+      // ---- bottom strip: spin-loop drift histogram ----
+      var S={x:56, y:CH-96, w:CW-56-24, h:70};
+      frame(ctx,S,{nx:8,ny:2,title:"cf_wait_until_ns spin drift · (actual − target) ≥ 0  [schematic clock granularity]",xlabel:"drift ns",ylabel:"n"});
+      var r2=rng(seed^0x99); var NB=32, hlo=0, hhi=Math.max(120, spread*0.25+60);
+      var hist=new Array(NB).fill(0), drifts=[];
+      for(var s=0;s<400;s++){ var d=Math.abs(gauss(r2))*22 + 8*r2(); drifts.push(d);
+        var b=Math.floor((d-hlo)/(hhi-hlo)*NB); if(b<0)b=0; if(b>=NB)b=NB-1; hist[b]++; }
+      var mx=Math.max.apply(null,hist,1);
+      ctx.fillStyle=css("--teal");
+      for(var b2=0;b2<NB;b2++){ var hh=S.h*hist[b2]/mx; ctx.globalAlpha=0.75;
+        ctx.fillRect(S.x+S.w*b2/NB, S.y+S.h-hh, S.w/NB-1, hh); }
+      ctx.globalAlpha=1;
+      drifts.sort(function(a,b){return a-b;}); var med=drifts[Math.floor(drifts.length/2)];
+
+      alnEl.textContent=aligned?"yes":"NO"; alnEl.style.color=aligned?css("--good"):css("--rose");
+      var os=Math.max.apply(null,offs)-Math.min.apply(null,offs);
+      spreadEl.textContent=os; spreadEl.style.color=os<I?css("--good"):css("--rose");
+      driftEl.textContent=med.toFixed(0);
+    }
+    [iv,jit,hs].forEach(function(el){ el.addEventListener("input",render); });
+    reseed.addEventListener("click",function(){ seed=(seed*1103515245+12345)>>>0; render(); });
+    window.addEventListener("resize",render); render();
+  })();
+
+  /* ==================== FIGURE IV — virtual crystal ==================== */
+  (function(){
+    var c=document.getElementById("catime-crystal"); if(!c) return;
+    var play=document.getElementById("catime-cry-play"), stepBtn=document.getElementById("catime-cry-step");
+    var modeSel=document.getElementById("catime-cry-mode"), resetBtn=document.getElementById("catime-cry-reset");
+    var simEl=document.getElementById("catime-cry-sim"), warpEl=document.getElementById("catime-cry-warp"), flatEl=document.getElementById("catime-cry-flat");
+    var CATDAY=1000000, TICK_REAL_MS=0.244/86400; // measured: 86,400 ticks in 0.244 ms
+    var catSec=0, playing=false, raf=0, gate=0, trace=[], TMAX=240;
+    var jseed=0xCA7D;
+
+    function pushTrace(){
+      var frac=catSec/CATDAY;
+      // detached: exact staircase value. attached: same but with schematic NTP/jitter wobble.
+      var r=rng((jseed + (trace.length*2654435761))>>>0);
+      var wob = (0.006*Math.sin(catSec*0.00013) + 0.010*(r()-0.5));
+      trace.push({det:frac, att:Math.max(0,Math.min(1,frac+wob))});
+      if(trace.length>TMAX) trace.shift();
+    }
+    function reset(){ catSec=0; trace=[]; pushTrace(); update(); }
+    function tick(dc){ catSec+=dc; if(catSec>CATDAY) catSec=CATDAY; pushTrace(); update(); }
+
+    function update(){ render(); }
+
+    function render(){
+      var ctx=fit(c), CW=c._logW, CH=c._logH; ctx.clearRect(0,0,CW,CH);
+      var attached = modeSel.value==="attached";
+      var gap=54, pad=56, top=34, bot=48, pw=(CW-pad-gap-24)/2, ph=CH-top-bot;
+      var A={x:pad,y:top,w:pw,h:ph}, B={x:pad+pw+gap,y:top,w:pw,h:ph};
+
+      // ---- Panel A: cat-day counter dial (arc + fill bar) ----
+      var cx=A.x+A.w/2, cy=A.y+A.h*0.5, R=Math.min(A.w,A.h)*0.34;
+      ctx.strokeStyle=css("--line"); ctx.lineWidth=12; ctx.beginPath(); ctx.arc(cx,cy,R,-Math.PI/2,1.5*Math.PI); ctx.stroke();
+      var frac=catSec/CATDAY;
+      ctx.strokeStyle=css("--amber"); ctx.lineWidth=12; ctx.shadowColor=css("--glow"); ctx.shadowBlur=12;
+      ctx.beginPath(); ctx.arc(cx,cy,R,-Math.PI/2,-Math.PI/2+2*Math.PI*frac); ctx.stroke(); ctx.shadowBlur=0;
+      var cat=catFlat(catSec);
+      ctx.fillStyle=css("--text"); ctx.font="26px "+css("--mono"); ctx.textAlign="center"; ctx.textBaseline="middle";
+      ctx.fillText(pad2(cat.h)+":"+pad2(cat.m)+":"+pad2(cat.s), cx, cy-6);
+      ctx.fillStyle=css("--teal"); ctx.font="11px "+css("--mono");
+      ctx.fillText((frac*100).toFixed(2)+"% of cat-day", cx, cy+16);
+      ctx.textBaseline="alphabetic";
+      ctx.fillStyle=css("--text-dim"); ctx.font="11px "+css("--mono"); ctx.textAlign="center";
+      ctx.fillText("counter  "+catSec.toLocaleString()+" / 1,000,000 cat-s", cx, A.y+A.h+2);
+
+      // ---- Panel B: attached vs detached trace ----
+      frame(ctx,B,{nx:4,ny:4,title:"cat-day progress · source = "+(attached?"attached":"detached"),xlabel:"tick #",ylabel:"day fraction"});
+      function BX(i){ return B.x+B.w*i/(TMAX-1); }
+      function BY(f){ return B.y+B.h*(1-f); }
+      // detached (clean)
+      ctx.strokeStyle=css("--violet"); ctx.lineWidth=2; ctx.beginPath();
+      for(var i=0;i<trace.length;i++){ var x=BX(i),y=BY(trace[i].det); if(i===0)ctx.moveTo(x,y); else ctx.lineTo(x,y);} ctx.stroke();
+      // attached (wobbly) — only emphasize when selected
+      ctx.strokeStyle=css("--rose"); ctx.lineWidth=attached?2:1; ctx.globalAlpha=attached?1:0.4; ctx.beginPath();
+      for(var j=0;j<trace.length;j++){ var x2=BX(j),y2=BY(trace[j].att); if(j===0)ctx.moveTo(x2,y2); else ctx.lineTo(x2,y2);} ctx.stroke(); ctx.globalAlpha=1;
+      ctx.font="10px "+css("--mono"); ctx.textAlign="left";
+      ctx.fillStyle=css("--violet"); ctx.fillText("detached · ~2.3 ns · deterministic", B.x+6, B.y+13);
+      ctx.fillStyle=css("--rose"); ctx.fillText("attached · ~31 ns · NTP jitter", B.x+6, B.y+27);
+
+      simEl.textContent=catSec.toLocaleString(); flatEl.textContent=pad6(cat.f);
+      // warp = sim seconds of cat-day covered vs real ms it would take detached
+      var realMs=catSec*TICK_REAL_MS;
+      var warp = realMs>0 ? (catSec*86.4)/(realMs) : 0; // cat-s*86.4ms real-equiv / real ms elapsed
+      warpEl.textContent = attached ? "1" : (warp>=1e6? (warp/1e6).toFixed(0)+"M" : Math.round(warp).toLocaleString());
+    }
+    function loop(){ if(!playing) return; if((gate++%2)===0){ tick(11574); } render();
+      if(catSec>=CATDAY){ setPlaying(false); return; } raf=requestAnimationFrame(loop); }
+    function setPlaying(on){ playing=on; play.setAttribute("aria-pressed",String(on));
+      play.textContent=on?"❚❚ pause":"▶ run cat-day";
+      if(on){ if(catSec>=CATDAY) reset();
+        if(reduce){ while(catSec<CATDAY) tick(11574); playing=false; play.setAttribute("aria-pressed","false"); play.textContent="▶ run cat-day"; return; } loop(); }
+      else cancelAnimationFrame(raf); }
+    play.addEventListener("click",function(){ setPlaying(!playing); });
+    stepBtn.addEventListener("click",function(){ if(playing) setPlaying(false); tick(10000); });
+    resetBtn.addEventListener("click",function(){ if(playing) setPlaying(false); reset(); });
+    modeSel.addEventListener("change",render);
+    window.addEventListener("resize",render); reset();
+  })();
+
+})();
+</script>
