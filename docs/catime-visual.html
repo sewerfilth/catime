@@ -117,14 +117,14 @@
 <div class="wrap">
 
   <header>
-    <div class="eyebrow">catime · stereo-spear primer · v1</div>
+    <div class="eyebrow">catime · library visual · v1</div>
     <h1>Base-100 time-of-day on an<br>exact <em>625:54</em> integer lattice.</h1>
     <p class="lede">catime slices the day into <b>100 hours × 100 minutes × 100 seconds</b> — a flat
       6-digit <code>HHMMSS</code> that self-segments by base-100 — and converts to and from wall time with a
       single reduced integer ratio, <code>625/54</code>. The four instruments below are the actual arithmetic:
       the conversion lattice and its round-trip residue, decimal self-segmentation against base-60, the
       fixed-interval PHC grid that keeps hosts in lock-step, and the detached "virtual crystal" that warps a
-      whole cat-day into a quarter-millisecond. Not a pitch — the numbers the asm computes.</p>
+      whole cat-day into a quarter-millisecond. Each plot is computed from the same arithmetic the asm runs.</p>
     <p class="abstract"><b>Scope.</b> Every plotted value is computed live from catime's own integer rules
       (seeded RNG only drives jitter/offsets), reproducing the qualitative regime. Ratios, byte layout, and
       API names are taken verbatim from <span class="tl">catime.h</span>, <span class="tl">catime_fixed.h</span>,
@@ -135,8 +135,8 @@
   <!-- ============ FIGURE I — CONVERSION LATTICE ============ -->
   <section>
     <div class="kicker"><span class="n">I</span> conversion · why real→cat→real is exact but cat→real→cat is not</div>
-    <h2>One reduced ratio, 625:54 — and the lattice it stamps on the day.</h2>
-    <p class="prose">The whole system is one identity: <code>1 day = 86,400 real s = 1,000,000 cat s</code>,
+    <h2>One reduced ratio, 625:54, and the lattice it defines over the day.</h2>
+    <p class="prose">The conversion rests on one identity: <code>1 day = 86,400 real s = 1,000,000 cat s</code>,
       and <code>gcd(86400, 1000000) = 1600</code>, so the map is the reduced ratio <b>625/54</b>. Forward
       (<code>ct_real_to_cat</code>) is a truncating <code>×625/54</code>; reverse
       (<code>ct_cat_to_real</code>) adds <code>625/2</code> before the <code>/625</code> divide — it is
@@ -149,7 +149,7 @@
     <p class="prose">Left: the conversion staircase over a window of the day — cat units against real seconds,
       with the current sample marked. Right: the two round-trip residues. <span style="color:var(--good)">real→cat→real</span>
       pins to zero across the tested range; <span style="color:var(--violet)">cat→real→cat</span> is a
-      sawtooth bounded by the lattice pitch — <b>this is the lattice, not a rounding loss</b>.</p>
+      sawtooth bounded by the lattice pitch, which reflects the grid spacing rather than a rounding loss.</p>
 
     <div class="instrument">
       <div class="instrument-bar">
@@ -179,7 +179,7 @@
   <!-- ============ FIGURE II — BASE-100 SELF-SEGMENTATION ============ -->
   <section>
     <div class="kicker"><span class="n">II</span> format · a flat integer that decomposes by mod-100</div>
-    <h2>HHMMSS reads itself. The day sliced decimally vs sliced by 60.</h2>
+    <h2>HHMMSS self-segments by mod-100: the day sliced decimally vs sliced by 60.</h2>
     <p class="prose">A cat time-of-day is a single integer in <code>0…999,999</code>. <code>ct_pack</code> is
       <code>h·10000 + m·100 + s</code>; <code>ct_split</code> peels it back with three <code>mod-100</code>
       steps — so <code>152030</code> <i>is</i> <code>15:20:30</code> cat, no separators. The real clock nests
@@ -205,7 +205,7 @@
         <span class="ctl" style="margin-left:auto">1 cat-hr = 864 s · 1 cat-s = 0.0864 s</span>
       </div>
     </div>
-    <div class="caption"><b>Watch the odometer wheels:</b> as you drag, the cat <span class="src">SS</span> wheel
+    <div class="caption"><b>Odometer wheels:</b> as you drag, the cat <span class="src">SS</span> wheel
       turns <code>11.574×</code> faster than the real seconds wheel — same day, finer decimal teeth. The two
       hour-grids only coincide at <code>0</code> and <code>86,400</code>; every other alignment is a beat.
       Packing/splitting is <code>ct_pack</code>/<code>ct_split</code> in <span class="src">catime.h</span>,
@@ -285,7 +285,7 @@
         <button id="catime-cry-reset">reset to midnight</button>
       </div>
     </div>
-    <div class="caption"><b>The point is the right panel:</b> attached, the trace wobbles — every read costs a
+    <div class="caption"><b>The right panel:</b> attached, the trace wobbles — every read costs a
       syscall and carries clock jitter, so no two runs match bit-for-bit. Detached, it is a straight
       counter-driven staircase: <code>ct_detach → ct_tick → ct_now_cat_flat</code> replays identically every
       time, the property golden-trace tests and warp-speed simulation depend on. The <span class="src">warp</span>
@@ -310,6 +310,40 @@
         <p>Same anchor + same ticks → byte-identical trace; zero NTP/jitter. Attached hot path is unchanged (single predicted-not-taken <code>cmpq</code>).</p></div>
       <div class="rule"><div class="n">§6</div><div class="h">Two arches, one arithmetic</div>
         <p>arm64 + x86_64 cores compute identical results; fixed-interval kernels are byte-for-byte the base <code>ct_*</code> instructions. Magic-multiply, no runtime <code>udiv</code>.</p></div>
+    </div>
+  </section>
+
+  <!-- ============ RESEARCH FOLLOW-UPS ============ -->
+  <section>
+    <div class="kicker"><span class="n">·</span> for researchers · open questions</div>
+    <h2>Research follow-ups.</h2>
+    <p class="prose">Concrete directions tied to the four instruments above. Each is an unresolved question
+      in the current implementation, stated in terms a student could pick up.</p>
+    <div class="rules">
+      <div class="rule"><div class="n">Q1</div><div class="h">Tight bound on cat→real→cat drift</div>
+        <p>Figure I shows the <code>cat→real→cat</code> residue as a sawtooth. Prove the exact worst-case bound
+          over <code>0…999,999</code> from the truncating <code>×625/54</code> and the <code>+625/2</code> reverse,
+          rather than reading "±6" off the plot — and characterize which cat values are fixed points.</p></div>
+      <div class="rule"><div class="n">Q2</div><div class="h">Sub-second and leap-second mapping</div>
+        <p>The <code>625/54</code> ratio is defined for a nominal 86,400 s day. Extend it to ms/ns units and
+          specify behaviour across a leap second (86,401 s day): does the lattice re-scale, absorb the extra
+          second, or is the day boundary redefined? Quantify the round-trip error each choice introduces.</p></div>
+      <div class="rule"><div class="n">Q3</div><div class="h">Beat structure of the two hour-grids</div>
+        <p>Figure II shows cat-hours (864 s) and real-hours (3600 s) coinciding only at <code>0</code> and
+          <code>86,400</code>. Derive the full alignment/beat pattern (near-coincidences within a tolerance ε)
+          and ask whether any base-100 subdivision yields a useful common grid with civil time.</p></div>
+      <div class="rule"><div class="n">Q4</div><div class="h">Lock-step under bounded clock drift</div>
+        <p>Figure III assumes static per-host offsets under one interval. Model offsets that drift over time
+          (skew, not just bias) and derive the interval <code>I</code> and re-sync period that keep
+          <code>cf_next_grid_ns</code> agreement across N hosts — and the failure rate when spread crosses <code>I</code>.</p></div>
+      <div class="rule"><div class="n">Q5</div><div class="h">Spin-drift model vs measured PHC reads</div>
+        <p>The drift histogram in Figure III is schematic. Replace it with measured <code>cf_wait_until_ns</code>
+          overshoot from real <code>CLOCK_REALTIME</code> and PHC sources, and fit a model for the read-cost tail
+          across platforms — is median drift dominated by <code>cf_now_ns</code> latency or by scheduler wakeups?</p></div>
+      <div class="rule"><div class="n">Q6</div><div class="h">Detached determinism as a test oracle</div>
+        <p>Figure IV's detached counter replays byte-identically. Formalize this as a golden-trace oracle: what
+          class of time-dependent bugs (ordering, interval boundaries, wraparound at <code>1,000,000</code>) can a
+          deterministic <code>ct_detach → ct_tick</code> schedule provably surface, and how should ticks be chosen?</p></div>
     </div>
   </section>
 
