@@ -152,6 +152,7 @@ _main:
     mov x22, x0
     mov w9, #54
     mul x0, x22, x9
+    add x0, x0, #312               // + 625/2 : round-to-nearest (match lib)
     mov w9, #625
     udiv x0, x0, x9
     sub sp, sp, #16

@@ -35,13 +35,17 @@ _ct_real_to_cat:
 
 // ----------------------------------------------------------------------------
 // uint64_t ct_cat_to_real(uint64_t cat)
-//   real = cat * 54 / 625
+//   real = round(cat * 54 / 625)
+//   Round-to-nearest: add 625/2 = 312 before the divide. The remainder of
+//   (cat*54) mod 625 is an integer, so the exact-half point (312.5) is never
+//   hit — r>=313 rounds up, r<=312 rounds down — i.e. correctly rounded.
 // ----------------------------------------------------------------------------
 .global _ct_cat_to_real
 .align 2
 _ct_cat_to_real:
     mov  w9, #54
     mul  x0, x0, x9
+    add  x0, x0, #312               // + 625/2 : round-to-nearest
     mov  w9, #625
     udiv x0, x0, x9
     ret
@@ -158,6 +162,41 @@ _ct_now_unix_sec:
     add x1, sp, #16
     bl _clock_gettime
     ldr x0, [sp, #16]               // tv_sec
+    ldp x29, x30, [sp], #32
+    ret
+
+// ----------------------------------------------------------------------------
+// uint64_t ct_now_unix_ns(void)
+//   detached: counter * 1_000_000_000   (synthetic timebase is a seconds
+//             counter; ns is a scalar lift, still deterministic)
+//   attached: clock_gettime(CLOCK_REALTIME).tv_sec*1e9 + tv_nsec
+// ----------------------------------------------------------------------------
+.global _ct_now_unix_ns
+.align 2
+_ct_now_unix_ns:
+    adrp x9, _ct_mode@PAGE
+    add  x9, x9, _ct_mode@PAGEOFF
+    ldr  x10, [x9]
+    cbz  x10, 1f
+    // detached: counter * 1e9
+    adrp x9, _ct_counter@PAGE
+    add  x9, x9, _ct_counter@PAGEOFF
+    ldr  x0, [x9]
+    movz x9, #0xCA00
+    movk x9, #0x3B9A, lsl #16       // 1_000_000_000
+    mul  x0, x0, x9
+    ret
+1:  // attached: clock_gettime + 1e9*tv_sec + tv_nsec
+    stp x29, x30, [sp, #-32]!
+    mov x29, sp
+    mov w0, #0                      // CLOCK_REALTIME
+    add x1, sp, #16
+    bl _clock_gettime
+    ldr x2, [sp, #16]               // tv_sec
+    ldr x3, [sp, #24]               // tv_nsec
+    movz x9, #0xCA00
+    movk x9, #0x3B9A, lsl #16       // 1_000_000_000
+    madd x0, x2, x9, x3
     ldp x29, x30, [sp], #32
     ret
 

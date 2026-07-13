@@ -70,7 +70,10 @@ catime: 500000
 real:   43200           # noon
 ```
 
-Integer-only; reverse conversion may lose a fractional cat-second on round-trip.
+Integer-only, but the reverse conversion is **correctly rounded** (adds 625/2
+before the `/625` divide), so `real → cat → real` is exact over the tested
+range. `cat → real → cat` can still differ by up to ~6, since one real-second
+spans ~11.57 cat-units — that is the lattice, not a rounding loss.
 
 ## Benchmarks
 
@@ -160,16 +163,29 @@ display delta is small enough to be lost in the next thing you do
 
 ### Fixed-interval (`libcatime_fixed`) — Linux ELF
 
-Not measured here (cross-compiled from macOS, target is Linux). Expected
-shape based on instruction count:
+The **arithmetic** kernels are byte-for-byte identical to the base-API
+`ct_*` conversion instructions, so `make bench` measures them directly on
+real hardware (Apple M-series, arm64 native). The `cf_now_ns` syscall cost is
+a Linux kernel-entry number and can't be measured from macOS.
 
-| function              | per-call (estimate)       | notes |
+| function              | per-call                  | notes |
 |-----------------------|---------------------------|-------|
-| `cf_to_cat_ns`        | ~1–2 ns                   | identical magic-mul |
-| `cf_from_cat_ns`      | ~5 ns                     | one `divq` |
+| `cf_to_cat_ns`        | **~2.8 ns** (measured)    | magic-mul /54 (== `ct_real_to_cat`) |
+| `cf_from_cat_ns`      | **~5.1 ns** (measured)    | rounded `divq` /625 (== `ct_cat_to_real`) |
 | `cf_next_grid_ns`     | ~5 ns                     | one `divq` + `mulq` |
-| `cf_now_ns`           | ~500–800 ns               | direct syscall (no vDSO) |
+| `cf_now_ns`           | ~500–800 ns (Linux)       | direct syscall (no vDSO) |
 | `cf_wait_until_ns`    | spin × `cf_now_ns` cost   | dominated by clock cost |
+
+### Dynamic PHC (PTP hardware clock) source
+
+For nanosecond accuracy against a NIC's PTP hardware clock, read `/dev/ptpN`
+directly instead of `CLOCK_REALTIME`:
+
+```c
+int      fd  = cf_open_phc("/dev/ptp0");   // < 0 on error (-errno)
+int      cid = cf_phc_clockid(fd);         // ((~fd) << 3) | 3
+uint64_t ns  = cf_now_dynamic_ns(cid);     // PHC time, ns since epoch
+```
 
 To get production HFT performance (~25 ns per `cf_now_ns`), link the host's
 vDSO `__vdso_clock_gettime` instead of using the syscall path. The lib is
@@ -181,6 +197,8 @@ written to make that a one-instruction swap.
 make            # macOS arm64 + x86_64 CLI tools (catime, catime-x86)
 make api        # macOS Mach-O base library (lib_arm64.o, lib_x86.o)
 make lib        # Linux ELF fixed-interval library (lib_fixed_*.o)
+make test       # automated tests: native arm64 + x86_64 (Rosetta)
+make bench      # measured conversion microbenchmark (arm64)
 ```
 
 CLI tools and base API link against libc. Fixed-interval library is

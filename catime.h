@@ -32,6 +32,11 @@ void ct_split(uint64_t flat, uint64_t *h, uint64_t *m, uint64_t *s);
  * counter (single load, ~1ns). */
 uint64_t ct_now_unix_sec(void);
 
+/* Same, but in nanoseconds. Attached: tv_sec*1e9 + tv_nsec. Detached:
+ * counter*1e9 (the synthetic timebase is a seconds counter, so ns is
+ * a scalar lift — still deterministic, still linear). */
+uint64_t ct_now_unix_ns(void);
+
 /* Current cat time-of-day as flat integer (0..999_999). */
 uint64_t ct_now_cat_flat(void);
 

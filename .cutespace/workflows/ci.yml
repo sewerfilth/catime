@@ -1,0 +1,52 @@
+name: CI (native Linux — execute cf_* asm)
+
+# catime's Makefile `test` target (test-arm64 / test-x86) is macOS-only: it drives
+# `clang -arch arm64|x86_64` against the Mach-O base-library objects (lib_arm64.s /
+# lib_x86.s), which do not assemble or run on Linux.
+#
+# What IS Linux-native is libcatime_fixed (lib_fixed_x86.s / lib_fixed_arm64.s): a
+# pure-syscall ELF library exposing the cf_* fixed-interval API. The `test-linux`
+# Makefile target assembles those objects with clang's integrated assembler (the
+# .s files use `//` comments that GNU gas rejects) and then links + RUNS
+# tests/test_catime_linux.c, so the conversion kernels, grid math, PHC clockid
+# math and the live clock_gettime syscall path are exercised natively — not just
+# assembled. The PHC device path (/dev/ptpN) is guarded and skipped when no PTP
+# hardware clock is present, but cf_open_phc / cf_now_dynamic_ns are still linked.
+on:
+  push:
+  pull_request:
+
+jobs:
+  x86_64-linux-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential clang
+
+      - name: Assemble native x86-64 Linux ELF objects (make lib)
+        # Sanity: the cross-target objects still assemble.
+        run: make lib
+
+      - name: Build & run native x86-64 cf_* test suite (make test-linux)
+        # Assembles lib_fixed_x86.s with clang and EXECUTES the cf_* kernels on
+        # the x86-64 runner. Fails the job on any conversion/grid/PHC-math error.
+        run: make test-linux
+
+  aarch64-linux-test:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential clang
+
+      - name: Build & run native aarch64 cf_* test suite (make test-linux)
+        # `uname -m` selects lib_fixed_arm64.s; assembles with clang and EXECUTES
+        # the cf_* kernels natively on the arm64 runner.
+        run: make test-linux

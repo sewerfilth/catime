@@ -28,11 +28,15 @@ _ct_real_to_cat:
 
 // ----------------------------------------------------------------------------
 // uint64_t ct_cat_to_real(uint64_t cat)
+//   real = round(cat * 54 / 625) — add 625/2 = 312 for round-to-nearest.
+//   The (cat*54) mod 625 remainder is integral, so 312.5 is never hit:
+//   correctly rounded (r>=313 up, r<=312 down).
 // ----------------------------------------------------------------------------
 .global _ct_cat_to_real
 .p2align 4
 _ct_cat_to_real:
     imulq $54, %rdi, %rax
+    addq  $312, %rax                 // + 625/2 : round-to-nearest
     xorq  %rdx, %rdx
     movq  $625, %rcx
     divq  %rcx
@@ -140,6 +144,32 @@ _ct_now_unix_sec:
     xorl  %eax, %eax
     callq _clock_gettime
     movq  (%rsp), %rax               // tv_sec
+    leave
+    retq
+
+// ----------------------------------------------------------------------------
+// uint64_t ct_now_unix_ns(void)
+//   detached: counter * 1e9 (synthetic seconds → ns)
+//   attached: tv_sec*1e9 + tv_nsec via clock_gettime
+// ----------------------------------------------------------------------------
+.global _ct_now_unix_ns
+.p2align 4
+_ct_now_unix_ns:
+    cmpq  $0, _ct_mode(%rip)
+    je    1f
+    movq  _ct_counter(%rip), %rax
+    imulq $1000000000, %rax, %rax
+    retq
+1:  pushq %rbp
+    movq  %rsp, %rbp
+    subq  $16, %rsp
+    movl  $0, %edi                   // CLOCK_REALTIME
+    movq  %rsp, %rsi
+    xorl  %eax, %eax
+    callq _clock_gettime
+    movq  (%rsp), %rax               // tv_sec
+    imulq $1000000000, %rax, %rax
+    addq  8(%rsp), %rax              // + tv_nsec
     leave
     retq
 

@@ -153,6 +153,7 @@ _main:
     callq _atoll
     movq  %rax, %r15                  // input
     imulq $54, %rax, %rax
+    addq  $312, %rax                  // + 625/2 : round-to-nearest (match lib)
     xorl  %edx, %edx
     movq  $625, %rcx
     divq  %rcx                        // rax = real

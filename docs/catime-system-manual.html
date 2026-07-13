@@ -1,0 +1,831 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>catime — System Manual</title>
+<style>
+:root{
+  --paper:#f4f6f6; --surface:#fff; --surface-2:#eaeeef;
+  --ink:#14181a; --ink-2:#48555a; --ink-3:#6d7b7f;
+  --rule:#d3dadb; --rule-2:#e3e8e9;
+  --accent:#0d5c63; --accent-soft:#e0eded;
+  --ok:#2f6f4e; --ok-bg:#e4efe8;
+  --partial:#8a5a12; --partial-bg:#f3ebdc;
+  --stub:#9a3b34; --stub-bg:#f4e3e1;
+  --code-bg:#eef1f1;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --paper:#0e1214; --surface:#161b1e; --surface-2:#1d2427;
+    --ink:#dde3e3; --ink-2:#9aa8ab; --ink-3:#78868a;
+    --rule:#2b3438; --rule-2:#212a2d;
+    --accent:#5cbfb4; --accent-soft:#122a2b;
+    --ok:#63b98c; --ok-bg:#14261d;
+    --partial:#d09a4a; --partial-bg:#2a2113;
+    --stub:#d97b70; --stub-bg:#2b1917;
+    --code-bg:#1a2124;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0e1214; --surface:#161b1e; --surface-2:#1d2427;
+  --ink:#dde3e3; --ink-2:#9aa8ab; --ink-3:#78868a;
+  --rule:#2b3438; --rule-2:#212a2d;
+  --accent:#5cbfb4; --accent-soft:#122a2b;
+  --ok:#63b98c; --ok-bg:#14261d;
+  --partial:#d09a4a; --partial-bg:#2a2113;
+  --stub:#d97b70; --stub-bg:#2b1917;
+  --code-bg:#1a2124;
+}
+:root[data-theme="light"]{
+  --paper:#f4f6f6; --surface:#fff; --surface-2:#eaeeef;
+  --ink:#14181a; --ink-2:#48555a; --ink-3:#6d7b7f;
+  --rule:#d3dadb; --rule-2:#e3e8e9;
+  --accent:#0d5c63; --accent-soft:#e0eded;
+  --ok:#2f6f4e; --ok-bg:#e4efe8;
+  --partial:#8a5a12; --partial-bg:#f3ebdc;
+  --stub:#9a3b34; --stub-bg:#f4e3e1;
+  --code-bg:#eef1f1;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;background:var(--paper);color:var(--ink);
+  font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
+  font-size:16px;line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{display:grid;grid-template-columns:250px minmax(0,1fr);gap:0;max-width:1240px;margin:0 auto}
+@media (max-width:900px){.wrap{grid-template-columns:1fr}nav.rail{position:static!important;height:auto!important;border-right:0!important;border-bottom:1px solid var(--rule)}}
+nav.rail{
+  position:sticky;top:0;height:100vh;overflow-y:auto;
+  padding:2.2rem 1.2rem 3rem;border-right:1px solid var(--rule);
+  font-size:.82rem;
+}
+nav.rail .brand{font-family:Palatino,"Iowan Old Style","Palatino Linotype",Georgia,serif;font-size:1.35rem;color:var(--ink);line-height:1.2;margin-bottom:.2rem}
+nav.rail .brandsub{color:var(--ink-3);font-size:.72rem;letter-spacing:.09em;text-transform:uppercase;margin-bottom:1.6rem}
+nav.rail a{display:block;color:var(--ink-2);text-decoration:none;padding:.28rem 0;border-left:2px solid transparent;padding-left:.7rem;margin-left:-.7rem}
+nav.rail a:hover{color:var(--accent);border-left-color:var(--accent)}
+nav.rail a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+nav.rail .grp{color:var(--ink-3);text-transform:uppercase;letter-spacing:.1em;font-size:.68rem;margin:1.4rem 0 .4rem;font-weight:600}
+main{padding:2.6rem 2.4rem 6rem;min-width:0}
+@media (max-width:900px){main{padding:1.6rem 1.1rem 4rem}}
+h1{font-family:Palatino,"Iowan Old Style",Georgia,serif;font-weight:500;font-size:2.5rem;line-height:1.12;margin:0 0 .5rem;text-wrap:balance;letter-spacing:-.01em}
+h2{font-family:Palatino,"Iowan Old Style",Georgia,serif;font-weight:500;font-size:1.72rem;line-height:1.2;margin:3.6rem 0 .3rem;text-wrap:balance;padding-top:1.4rem;border-top:1px solid var(--rule)}
+h3{font-family:Palatino,"Iowan Old Style",Georgia,serif;font-weight:500;font-size:1.24rem;margin:2.2rem 0 .4rem;text-wrap:balance}
+h4{font-size:.79rem;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-3);margin:1.6rem 0 .5rem;font-weight:600}
+p,li{max-width:68ch}
+p{margin:.75rem 0}
+main>section{max-width:100%}
+code,kbd{font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,monospace;font-size:.855em;font-variant-numeric:tabular-nums}
+p code,li code,td code,th code{background:var(--code-bg);padding:.1em .34em;border-radius:3px}
+.lede{font-size:1.09rem;color:var(--ink-2);max-width:66ch}
+.eyebrow{font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);font-weight:600;margin-bottom:.7rem}
+.tbl{overflow-x:auto;margin:1.1rem 0;border:1px solid var(--rule);border-radius:5px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:.855rem}
+th{text-align:left;font-weight:600;font-size:.7rem;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-3);padding:.6rem .8rem;border-bottom:1px solid var(--rule);white-space:nowrap;background:var(--surface-2)}
+td{padding:.52rem .8rem;border-bottom:1px solid var(--rule-2);vertical-align:top}
+tr:last-child td{border-bottom:0}
+td code{white-space:nowrap}
+.num{font-variant-numeric:tabular-nums;text-align:right}
+.chip{display:inline-block;font-size:.66rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;padding:.13rem .45rem;border-radius:3px;white-space:nowrap;font-family:ui-monospace,monospace}
+.c-ok{background:var(--ok-bg);color:var(--ok)}
+.c-partial{background:var(--partial-bg);color:var(--partial)}
+.c-stub{background:var(--stub-bg);color:var(--stub)}
+.card{background:var(--surface);border:1px solid var(--rule);border-radius:5px;padding:1rem 1.2rem;margin:1.1rem 0}
+.card.sev{border-left:3px solid var(--accent)}
+.card.sev-warn{border-left:3px solid var(--partial)}
+.card.sev-stub{border-left:3px solid var(--stub)}
+.card h4{margin-top:0}
+pre{background:var(--code-bg);border:1px solid var(--rule);border-radius:5px;padding:.9rem 1rem;overflow-x:auto;margin:1rem 0;line-height:1.5}
+pre code{font-size:.8rem}
+.layers{display:flex;flex-direction:column;gap:0;margin:1.4rem 0;border:1px solid var(--rule);border-radius:5px;overflow:hidden}
+.layer{display:grid;grid-template-columns:2.2rem 1fr;gap:1rem;padding:.9rem 1.1rem;background:var(--surface);border-bottom:1px solid var(--rule-2);align-items:baseline}
+.layer:last-child{border-bottom:0}
+.layer .n{font-family:ui-monospace,monospace;font-size:.8rem;color:var(--accent);font-weight:600}
+.layer .nm{font-weight:600}
+.layer .ds{color:var(--ink-2);font-size:.88rem;margin-top:.15rem}
+.legend{display:flex;gap:1.2rem;flex-wrap:wrap;margin:1rem 0;font-size:.82rem;color:var(--ink-2)}
+.legend span{display:flex;gap:.4rem;align-items:center}
+hr.soft{border:0;border-top:1px solid var(--rule-2);margin:2rem 0}
+a{color:var(--accent)}
+.foot{margin-top:4rem;padding-top:1.4rem;border-top:1px solid var(--rule);color:var(--ink-3);font-size:.82rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav class="rail">
+  <div class="brand">catime</div>
+  <div class="brandsub">System Manual</div>
+
+  <div class="grp">Orientation</div>
+  <a href="#overview">Overview</a>
+  <a href="#reading">How to read this</a>
+  <a href="#model">The base-100 model</a>
+  <a href="#ratio">The 625:54 ratio</a>
+
+  <div class="grp">Architecture</div>
+  <a href="#architecture">Pipeline &amp; layers</a>
+  <a href="#maturity">Maturity &amp; status</a>
+  <a href="#magicmul">Magic-multiply division</a>
+  <a href="#formatter">The digit-pair formatter</a>
+
+  <div class="grp">Subsystems</div>
+  <a href="#base-api">libcatime (base API)</a>
+  <a href="#detached">Detached mode</a>
+  <a href="#fixed-api">libcatime_fixed (PTP)</a>
+  <a href="#cli-macos">catime CLI (macOS)</a>
+  <a href="#cli-fixed">catime-fixed demo (Linux)</a>
+
+  <div class="grp">Reference</div>
+  <a href="#api-surface">Public API surface</a>
+  <a href="#build">Build system</a>
+  <a href="#depgraph">cutestack dependency graph</a>
+
+  <div class="grp">Glossary</div>
+  <a href="#g-types">Structures &amp; types</a>
+  <a href="#g-funcs">Functions</a>
+  <a href="#g-consts">Constants &amp; macros</a>
+  <a href="#g-globals">Globals &amp; statics</a>
+  <a href="#g-cli">CLI args &amp; symbols</a>
+
+  <div class="grp">Closing</div>
+  <a href="#limitations">Current limitations</a>
+</nav>
+
+<main>
+<section id="overview">
+  <div class="eyebrow">CuteHeart Exosystems — catime Brief</div>
+  <h1>catime — Computational Adjusted Time</h1>
+  <p class="lede">A pure base-100 time-of-day clock, written directly in
+  AArch64 and x86-64 assembly. It slices the real day into 100 hours × 100
+  minutes × 100 seconds, converts between real and "cat" units through one
+  exact integer ratio, and does the whole thing in a handful of instructions
+  per call.</p>
+
+  <p>The premise is deliberately small: keep the <em>day</em> as the wall-clock
+  anchor — one cat-day equals one real day — and make everything below the day
+  decimal. A cat time-of-day is therefore a single six-digit integer
+  <code>HHMMSS</code> in the range <code>0 … 999999</code> that self-segments by
+  base-100: <code>152030</code> reads as <code>15:20:30</code> cat with no
+  separators needed. That representation is what makes the library fast — the
+  hot paths are just multiplies, one reciprocal multiply for the division, and a
+  table lookup for formatting.</p>
+
+  <p>catime is one of the <strong>base libraries</strong> of the cutestack
+  workspace. It has no sibling dependencies; it links only against libc (on the
+  macOS side) or nothing at all (on the Linux fixed-interval side). Everything
+  described here was read out of the source in this repository — the two C
+  headers, four library <code>.s</code> files, two CLI/demo <code>.s</code>
+  files, and the <code>Makefile</code>.</p>
+</section>
+
+<section id="reading">
+  <div class="card sev">
+    <h4>How to read this document</h4>
+    <p>This is an <strong>explainer</strong>, not a checklist. Each section
+    describes what a piece of code <em>is</em>, <em>how</em> it works, and —
+    where the source makes the reasoning legible — <em>why</em> it is built that
+    way. Every function, constant, register choice, and flag named here was read
+    from the assembly or headers in this repo; nothing is invented.</p>
+    <p>The repo ships <strong>two independent libraries</strong> that share a
+    conversion ratio but nothing else:</p>
+    <ul>
+      <li><strong>libcatime</strong> (<code>catime.h</code>,
+      <code>lib_arm64.s</code>, <code>lib_x86.s</code>) — the macOS Mach-O base
+      API. Links libc for <code>clock_gettime</code>. Adds "detached mode", a
+      developer-driven synthetic timebase.</li>
+      <li><strong>libcatime_fixed</strong> (<code>catime_fixed.h</code>,
+      <code>lib_fixed_arm64.s</code>, <code>lib_fixed_x86.s</code>) — a Linux
+      ELF, pure-syscall PTP-style fixed-interval timing kit. No libc, no
+      globals.</li>
+    </ul>
+    <p>Two standalone programs demonstrate them: the macOS
+    <code>catime</code> CLI (<code>main.s</code> / <code>main_x86.s</code>) and
+    the Linux <code>catime-fixed</code> spin-tick emitter (<code>main_fixed.s</code>
+    / <code>main_x86_fixed.s</code>). Use the maturity chips
+    (<span class="chip c-ok">stable</span> <span class="chip c-partial">partial</span>
+    <span class="chip c-stub">stub</span>) throughout to gauge how finished
+    each piece is.</p>
+  </div>
+</section>
+
+<section id="model">
+  <h2>The base-100 model</h2>
+  <p>catime drops 60 and 24 from clock semantics. The day is divided evenly
+  into a decimal hierarchy:</p>
+  <pre><code>100 cat-s   = 1 cat-min
+100 cat-min = 1 cat-hr
+100 cat-hr  = 1 cat-day
+  1 cat-day = 1 real day        &lt;- the wall-time anchor</code></pre>
+
+  <p>So a full cat-day is <code>100 × 100 × 100 = 1,000,000</code> cat-seconds,
+  versus a real day's <code>24 × 60 × 60 = 86,400</code> real seconds. Because
+  the day boundary is shared, the cat clock and the wall clock roll over to
+  midnight at exactly the same instant; only the sub-day subdivision differs.</p>
+
+  <p>A consequence worth internalising: a cat-minute is <em>shorter</em> than a
+  real minute. Concretely (from the README's unit table):</p>
+  <div class="tbl"><table>
+    <thead><tr><th>unit</th><th>real duration</th><th>note</th></tr></thead>
+    <tbody>
+      <tr><td><code>1 cat-day</code></td><td class="num">86,400 s</td><td>= 1 real day (anchor)</td></tr>
+      <tr><td><code>1 cat-hour</code></td><td class="num">864 s</td><td>14 min 24 s real</td></tr>
+      <tr><td><code>1 cat-minute</code></td><td class="num">8.64 s</td><td>&mdash;</td></tr>
+      <tr><td><code>1 cat-second</code></td><td class="num">0.0864 s</td><td>&mdash;</td></tr>
+    </tbody>
+  </table></div>
+
+  <p>The intuition trap is trying to map "cat-minute" onto "minute". Don't. The
+  correct mental model is a pure rescale of the time-of-day axis:
+  <code>cat_flat = real_sec_of_day × 1,000,000 / 86,400</code>. Everything in
+  the library follows from that single relationship.</p>
+</section>
+
+<section id="ratio">
+  <h2>The 625:54 ratio</h2>
+  <p>The rescale factor <code>1,000,000 / 86,400</code> reduces exactly. Both
+  numbers share a greatest common divisor of <code>1600</code>:</p>
+  <pre><code>1,000,000 / 1600 = 625
+   86,400 / 1600 =  54
+
+cat_seconds  = real_seconds × 625 / 54
+real_seconds = cat_seconds  ×  54 / 625</code></pre>
+
+  <p>This is the whole numerical heart of the system. Because the ratio is a
+  pair of small integers with a clean reduction, the conversion is exact for any
+  consistent unit — seconds, milliseconds, or nanoseconds — and never needs
+  floating point. <code>ct_real_to_cat</code>, <code>cf_to_cat_ns</code>, the
+  CLI's forward path, and the fixed emitter's <code>cat_ns</code> computation
+  are <em>all the same multiply-by-625-then-divide-by-54</em>; they just operate
+  on different units.</p>
+
+  <p>The reverse direction (<code>× 54 / 625</code>) is integer-truncating, so a
+  real → cat → real round-trip can lose up to a fractional cat-second. This is
+  documented in the README as expected behaviour, not a bug: the library is
+  integer-only by design because that is what keeps it in the sub-nanosecond
+  cost class.</p>
+</section>
+
+<section id="architecture">
+  <h2>Architecture — pipeline &amp; layers</h2>
+  <p>Every catime operation is a short pipeline over 64-bit unsigned integers.
+  There is no allocation, no state machine, and (in the base arithmetic) no
+  branches. The layers below decompose the system from raw clock read down to a
+  printable string.</p>
+
+  <div class="layers">
+    <div class="layer"><div class="n">01</div><div><div class="nm">Clock source</div><div class="ds">Either the hardware wall clock (<code>clock_gettime(CLOCK_REALTIME)</code> via libc on macOS, or a raw <code>SYS_clock_gettime</code> syscall on Linux) or, in detached mode, a developer-driven counter in BSS.</div></div></div>
+    <div class="layer"><div class="n">02</div><div><div class="nm">Day reduction</div><div class="ds"><code>sec_of_day = unix_sec % 86400</code>. Strips the epoch so only the time-of-day survives. Done with a single <code>udiv</code>/<code>msub</code> (arm) or <code>divq</code> (x86).</div></div></div>
+    <div class="layer"><div class="n">03</div><div><div class="nm">Ratio conversion</div><div class="ds"><code>cat = real × 625 / 54</code>. The <code>/54</code> is a magic-multiply (<code>umulh</code> + <code>lsr #5</code>) in the optimised paths, a plain divide elsewhere.</div></div></div>
+    <div class="layer"><div class="n">04</div><div><div class="nm">Base-100 decompose</div><div class="ds"><code>h = flat/10000</code>, <code>m = (flat/100)%100</code>, <code>s = flat%100</code>. Pure <code>udiv</code>/<code>msub</code>. The inverse, <code>pack</code>, is two fused multiply-adds.</div></div></div>
+    <div class="layer"><div class="n">05</div><div><div class="nm">Format</div><div class="ds">The <code>_fmt_hms</code> routine turns three base-100 components into <code>"HH:MM:SS\0"</code> using a 200-byte two-digit lookup table — no <code>snprintf</code>, ~10 instructions.</div></div></div>
+    <div class="layer"><div class="n">06</div><div><div class="nm">Emit</div><div class="ds">macOS CLI hands buffers to libc <code>printf</code>; the Linux fixed demo assembles a line by hand and writes it with a raw <code>SYS_write</code> syscall.</div></div></div>
+  </div>
+
+  <p>The two libraries occupy the same layers but make opposite ABI choices.
+  <strong>libcatime</strong> is a good citizen of the platform: Mach-O objects
+  that call into libc, so <code>ct_now_*</code> inherits NTP corrections for
+  free. <strong>libcatime_fixed</strong> refuses libc entirely: it issues
+  syscalls directly (<code>svc #0</code> / <code>syscall</code>) so it can be
+  linked into a <code>-nostdlib</code> ELF and cross-compiled from Apple's clang
+  with no extra toolchain.</p>
+</section>
+
+<section id="maturity">
+  <h2>Maturity &amp; status</h2>
+  <div class="legend">
+    <span><span class="chip c-ok">stable</span> implemented, exercised, no known gaps</span>
+    <span><span class="chip c-partial">partial</span> works, but with a documented caveat or unmeasured path</span>
+    <span><span class="chip c-stub">stub</span> placeholder / not implemented</span>
+  </div>
+  <div class="tbl"><table>
+    <thead><tr><th>component</th><th>status</th><th>notes</th></tr></thead>
+    <tbody>
+      <tr><td>libcatime base arithmetic (<code>ct_real_to_cat</code>, <code>ct_cat_to_real</code>, <code>ct_pack</code>, <code>ct_split</code>)</td><td><span class="chip c-ok">stable</span></td><td>Both arches, branchless, benchmarked at the noise floor.</td></tr>
+      <tr><td>libcatime clock reads (<code>ct_now_unix_sec/ns</code>, <code>ct_now_cat_flat</code>)</td><td><span class="chip c-ok">stable</span></td><td>Attached path calls libc <code>clock_gettime</code>.</td></tr>
+      <tr><td>Detached mode (virtual crystal)</td><td><span class="chip c-ok">stable</span></td><td>Full state machine in BSS; both arches.</td></tr>
+      <tr><td>catime macOS CLI (<code>main.s</code>/<code>main_x86.s</code>)</td><td><span class="chip c-ok">stable</span></td><td>forward / reverse / now / split / pack / bench all present.</td></tr>
+      <tr><td>libcatime_fixed conversion + grid (<code>cf_to_cat_ns</code>, <code>cf_from_cat_ns</code>, <code>cf_next_grid_ns</code>, <code>cf_wait_until_ns</code>)</td><td><span class="chip c-ok">stable</span></td><td>Cross-compiled Linux ELF, pure syscalls.</td></tr>
+      <tr><td>libcatime_fixed clock read (<code>cf_now_ns</code>)</td><td><span class="chip c-partial">partial</span></td><td>Uses the <em>syscall</em> path (~500 ns). vDSO swap for ~25 ns is documented but not wired in.</td></tr>
+      <tr><td>Fixed-interval performance numbers</td><td><span class="chip c-partial">partial</span></td><td>Conversion cost now <em>measured</em> on real hardware via <code>make bench</code> (arithmetic is byte-identical to the Linux <code>cf_*</code> path); only <code>cf_now_ns</code>'s Linux syscall cost stays unmeasured from macOS.</td></tr>
+      <tr><td>Dynamic PHC clock (<code>/dev/ptpN</code>) source</td><td><span class="chip c-ok">stable</span></td><td>Implemented in both Linux ELF libs: <code>cf_open_phc</code> / <code>cf_phc_clockid</code> / <code>cf_now_dynamic_ns</code> (openat + dynamic-clockid <code>clock_gettime</code>).</td></tr>
+      <tr><td>Automated test suite (macOS base API)</td><td><span class="chip c-ok">stable</span></td><td><code>make test</code> runs <code>tests/test_catime.c</code> native arm64 + x86_64 (Rosetta): pack/split, known vectors, forward/reverse conversion, round-trip, detached mode.</td></tr>
+      <tr><td>Automated test suite (Linux <code>cf_*</code> ELF)</td><td><span class="chip c-ok">stable</span></td><td><code>make test-linux</code> assembles <code>lib_fixed_{x86,arm64}.s</code> with clang and <em>executes</em> <code>tests/test_catime_linux.c</code> on native x86_64/aarch64 Linux: known vectors, forward==floor, reverse==round, round-trip bounds, <code>cf_next_grid_ns</code>, <code>cf_phc_clockid</code> bit math, a live <code>cf_now_ns</code> syscall read. PHC (<code>/dev/ptpN</code>) is linked but skipped at runtime when absent. Wired into CI (x86_64 + arm64 runners).</td></tr>
+      <tr><td><code>catime_fixed.h</code> caller-managed state note vs. shared BSS scratch</td><td><span class="chip c-partial">partial</span></td><td>Header says "no globals"; the asm actually uses one shared <code>.bss</code> timespec (<code>cf_ts</code>). See Limitations.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="magicmul">
+  <h2>Magic-multiply division</h2>
+  <p>The division by 54 in the forward conversion is the one place the code
+  spends real cleverness. A hardware divide (<code>udiv</code> / <code>divq</code>)
+  is correct but comparatively slow, so the optimised paths replace
+  <code>x / 54</code> with a multiply by a 64-bit "magic" reciprocal, taking the
+  high half of the 128-bit product and shifting:</p>
+  <pre><code>; arm64  (lib_arm64.s, ct_real_to_cat)
+mov   w9, #625
+mul   x0, x0, x9                 ; x0 = real * 625
+movz  x9, #0x425F
+movk  x9, #0x097B, lsl #16
+movk  x9, #0x25ED, lsl #32
+movk  x9, #0x97B4, lsl #48       ; x9 = 0x97B425ED097B425F  (magic for d=54)
+umulh x0, x0, x9                 ; high 64 of the 128-bit product
+lsr   x0, x0, #5                 ; >> 5  -> exact floor(x/54)
+ret</code></pre>
+  <pre><code>; x86_64 (lib_x86.s, ct_real_to_cat) — same constant, same shift
+imulq   $625, %rdi, %rax
+movabsq $0x97B425ED097B425F, %rcx
+mulq    %rcx                     ; rdx:rax = rax * rcx  (rdx = high 64)
+shrq    $5, %rdx
+movq    %rdx, %rax
+retq</code></pre>
+  <p>The constant <code>0x97B425ED097B425F</code> and the <code>>> 5</code> are
+  the exact multiply-by-reciprocal sequence a C compiler emits for
+  <code>/54</code> at <code>-O3</code>; the author lifted them by hand so the
+  assembly matches what the optimiser would have produced. The README measures
+  this at roughly 40% faster than the corresponding hardware divide for case
+  (a). The <em>reverse</em> direction (<code>× 54 / 625</code>) keeps a plain
+  divide, because it is not on the hot display path and the code favours clarity
+  there. The same magic constant reappears verbatim in the fixed library's
+  <code>cf_to_cat_ns</code> and inside the CLI's <code>bench</code> loop — one
+  reciprocal, reused everywhere the ratio is applied.</p>
+</section>
+
+<section id="formatter">
+  <h2>The digit-pair formatter</h2>
+  <p><code>_fmt_hms</code> (in <code>main.s</code> / <code>main_x86.s</code>)
+  converts three already-decomposed base-100 components into the nine bytes
+  <code>"HH:MM:SS\0"</code> without a single call. It leans on a 200-byte lookup
+  table, <code>digit_pairs</code>, that stores the ASCII rendering of every value
+  <code>00</code>…<code>99</code> back to back:</p>
+  <pre><code>digit_pairs:
+    .ascii "00010203040506070809"
+    .ascii "10111213141516171819"
+    ... through ...
+    .ascii "90919293949596979899"</code></pre>
+  <p>Because each component is already in <code>0…99</code>, its two-character
+  rendering is just the halfword at <code>digit_pairs + value*2</code>. The
+  routine loads that halfword, stores it, drops a <code>':'</code> between
+  fields, and writes a terminating NUL — about ten instructions total. The
+  README credits this trick with cutting decompose-plus-format from ~85 ns
+  (the old <code>snprintf("%02lld:%02lld:%02lld", …)</code>) to ~2 ns, roughly
+  a 40× win, and notes it as a "good coding" flourish rather than a necessity —
+  the formatter was never the bottleneck, but it is nearly free to make fast.</p>
+  <p>One subtlety in the comment: the routine is documented as preserving
+  <code>x0…x3</code> "as a side-effect since they're read once at top". It uses
+  scratch registers <code>x4…x7</code> and never spills, so it is safe to call
+  in a tight loop with no frame setup.</p>
+</section>
+
+<section id="base-api">
+  <h2>libcatime — the macOS base API</h2>
+  <p>Files: <code>catime.h</code>, <code>lib_arm64.s</code> (Darwin arm64),
+  <code>lib_x86.s</code> (Darwin x86-64, AT&amp;T syntax). Both assemble to
+  Mach-O objects (<code>lib_arm64.o</code>, <code>lib_x86.o</code>) that you
+  link straight into a C program. The two arches are line-for-line equivalent;
+  only the register conventions and division encodings differ.</p>
+
+  <h3>What it owns</h3>
+  <p>Six arithmetic/clock entry points plus four detached-mode controls. The
+  arithmetic quartet — <code>ct_real_to_cat</code>, <code>ct_cat_to_real</code>,
+  <code>ct_pack</code>, <code>ct_split</code> — is stateless and branchless.
+  <code>ct_pack</code> is the tidiest example of the style: the flat integer
+  <code>h*10000 + m*100 + s</code> is computed as
+  <code>((h*100)+m)*100+s</code> with two fused multiply-adds
+  (<code>madd</code>) on arm, or two <code>imul</code>/<code>add</code> pairs on
+  x86. <code>ct_split</code> is its inverse and is the one arithmetic routine
+  that takes pointers — it writes <code>*h</code>, <code>*m</code>, <code>*s</code>
+  back through <code>x1/x2/x3</code> (arm) or, on x86, first copies the pointer
+  args into <code>r8/r9/r10</code> because <code>rdx</code>/<code>rcx</code> are
+  clobbered by <code>divq</code>.</p>
+
+  <h3>The clock trio</h3>
+  <p><code>ct_now_unix_sec</code>, <code>ct_now_unix_ns</code>, and
+  <code>ct_now_cat_flat</code> are the only functions that touch the outside
+  world. Each begins by loading the mode byte from BSS and branching:</p>
+  <ul>
+    <li><strong>Detached</strong> → return the synthetic counter with a single
+    load. <code>ct_now_unix_ns</code> lifts that seconds counter to nanoseconds
+    by multiplying by <code>1,000,000,000</code> (the literal
+    <code>0x3B9ACA00</code> assembled with a <code>movz</code>/<code>movk</code>
+    pair). The result is linear and deterministic — the header calls this a
+    "scalar lift".</li>
+    <li><strong>Attached</strong> → set up a frame, call libc
+    <code>clock_gettime(CLOCK_REALTIME, &amp;ts)</code>, and read
+    <code>tv_sec</code> (and, for the ns variant, fold in <code>tv_nsec</code>
+    with a <code>madd</code>).</li>
+  </ul>
+  <p><code>ct_now_cat_flat</code> composes the pipeline: call
+  <code>ct_now_unix_sec</code>, reduce mod 86400 to a second-of-day, then tail
+  into <code>ct_real_to_cat</code>. Because it reuses the other two entry points
+  it inherits detached-mode behaviour automatically — a detached
+  <code>ct_now_cat_flat</code> is fully deterministic.</p>
+
+  <p>Note one header/README mismatch worth flagging: <code>ct_now_unix_ns</code>
+  is declared in <code>catime.h</code> and implemented in both <code>.s</code>
+  files, but the README's "libcatime C API" listing omits it. The function is
+  real; the doc list is just incomplete.</p>
+</section>
+
+<section id="detached">
+  <h2>Detached mode — the virtual crystal</h2>
+  <p>Detached mode swaps the clock source from hardware to a developer-driven
+  counter, turning libcatime into a synthetic timebase you can speed up, pause,
+  or rewind while the format/decompose/convert pipeline keeps working unchanged.
+  It is the library's most distinctive feature and its entire state is two
+  8-byte cells in BSS:</p>
+  <pre><code>.section __DATA,__bss
+.lcomm _ct_mode,    8    ; 0 = attached, 1 = detached
+.lcomm _ct_counter, 8    ; detached: current unix-sec value</code></pre>
+
+  <h3>The four controls</h3>
+  <ul>
+    <li><code>ct_detach(start_unix_sec)</code> — store the anchor into
+    <code>_ct_counter</code> and set <code>_ct_mode = 1</code>.</li>
+    <li><code>ct_attach()</code> — clear <code>_ct_mode</code> back to 0
+    (<code>str xzr</code> on arm, <code>movq $0</code> on x86).</li>
+    <li><code>ct_tick(delta_sec)</code> — add <code>delta</code> to the counter,
+    but <em>only</em> when detached. The routine loads the mode and
+    <code>cbz</code>/<code>je</code>-skips the whole body if attached, so calling
+    it in attached mode is a safe no-op.</li>
+    <li><code>ct_is_detached()</code> — return the mode byte directly as the
+    int result.</li>
+  </ul>
+
+  <h3>Why it is built this way</h3>
+  <p>The README lists four motivations, all traceable to the code: (1)
+  <em>warp-speed simulation</em> — because cat-time is a pure
+  <code>0…1,000,000</code> counter, you can walk an entire cat-day at memory
+  bandwidth; (2) <em>deterministic benchmarking</em> — no NTP drift, same input
+  → same trace; (3) <em>black-box replay</em> — feed persisted values back into
+  a detached emitter to step through history; (4) <em>zero overhead when
+  off</em>. Point (4) is legible in the assembly: attached mode adds exactly one
+  <code>cmpq</code>/<code>cbz</code> against a single byte, branch-predicted
+  not-taken, so detached support costs the hot attached path essentially
+  nothing. The detached <code>ct_now_unix_sec</code> is a lone load from BSS —
+  the README clocks it near 1 GOps/s, which is the upper bound on how fast a
+  simulation can step through cat-time.</p>
+</section>
+
+<section id="fixed-api">
+  <h2>libcatime_fixed — PTP-style fixed-interval timing</h2>
+  <p>Files: <code>catime_fixed.h</code>, <code>lib_fixed_arm64.s</code>,
+  <code>lib_fixed_x86.s</code>. This is a completely separate library aimed at
+  Linux hosts doing lock-stepped, absolute-grid timing (the header frames the
+  motivating use as HFT). It is compiled <code>-nostdlib</code> and issues
+  syscalls directly, so it drops into an ELF with no libc.</p>
+
+  <h3>Clock read — <code>cf_now_ns</code></h3>
+  <p>Loads <code>CLOCK_REALTIME</code> via a raw <code>clock_gettime</code>
+  syscall (<code>x8 = 113</code> on arm64, <code>rax = 228</code> on x86-64 —
+  the two Linux syscall numbers differ, which is why each arch hard-codes its
+  own <code>.equ SYS_clock_gettime</code>). It then folds the returned
+  <code>tv_sec</code>/<code>tv_nsec</code> into a single nanosecond count with
+  the same <code>× 1e9 + nsec</code> multiply-add used everywhere else. The
+  clock is assumed to be disciplined upstream by <code>ptp4l</code> or
+  <code>chrony</code> against a NIC PHC, giving sub-microsecond accuracy on a
+  properly configured host.</p>
+
+  <h3>Conversion &amp; grid</h3>
+  <ul>
+    <li><code>cf_to_cat_ns</code> — identical magic-multiply as
+    <code>ct_real_to_cat</code>, applied to nanoseconds instead of seconds
+    (the ratio is unit-agnostic).</li>
+    <li><code>cf_from_cat_ns</code> — the <code>× 54 / 625</code> reverse with a
+    plain divide.</li>
+    <li><code>cf_next_grid_ns(now, interval)</code> — the smallest
+    <code>k·interval</code> strictly greater than <code>now</code>, computed as
+    <code>(now/interval + 1) × interval</code>. Used to align ticks to an
+    absolute wall-clock grid so multiple hosts fire in lock-step.</li>
+    <li><code>cf_wait_until_ns(target)</code> — busy-spins on
+    <code>cf_now_ns</code> until the sample reaches <code>target</code>, then
+    returns the actual observed value. The positive gap
+    <code>observed − target</code> is the per-tick "drift" of your spin loop.</li>
+  </ul>
+  <p>The API is deliberately <em>caller-managed</em> — no init call, and (per
+  the header) "no globals". In practice the assembly keeps one shared
+  <code>.bss</code> timespec scratch (<code>cf_ts</code>) that the syscall writes
+  into; it is reused across calls rather than passed by the caller. This is
+  fine for single-threaded use but is the one spot where the header's wording
+  runs slightly ahead of the code (flagged under Limitations).</p>
+</section>
+
+<section id="cli-macos">
+  <h2>catime CLI — the macOS front end</h2>
+  <p>Files: <code>main.s</code> (arm64), <code>main_x86.s</code> (x86-64). A
+  self-contained Mach-O executable that links libc (for <code>printf</code>,
+  <code>strcmp</code>, <code>atoll</code>, <code>clock_gettime</code>,
+  <code>mach_absolute_time</code>). <code>_main</code> dispatches on
+  <code>argv[1]</code> by string-comparing against a fixed set of subcommand
+  literals, then falling through to numeric conversion.</p>
+
+  <div class="tbl"><table>
+    <thead><tr><th>invocation</th><th>does</th></tr></thead>
+    <tbody>
+      <tr><td><code>catime &lt;real_seconds&gt;</code></td><td>forward: prints <code>real:</code> and <code>catime:</code> (× 625 / 54).</td></tr>
+      <tr><td><code>catime -r &lt;cat_seconds&gt;</code></td><td>reverse: prints <code>catime:</code> and <code>real:</code> (× 54 / 625).</td></tr>
+      <tr><td><code>catime now</code></td><td>reads <code>CLOCK_REALTIME</code>; prints unix sec, real HH:MM:SS (mod 60/60/24), cat HH:MM:SS (base-100), and <code>catime_flat</code>.</td></tr>
+      <tr><td><code>catime split &lt;flat&gt;</code></td><td>decomposes a flat integer to base-100 H, M, S and the formatted <code>hms</code> string.</td></tr>
+      <tr><td><code>catime pack &lt;H&gt; &lt;M&gt; &lt;S&gt;</code></td><td>composes H, M, S into a flat integer.</td></tr>
+      <tr><td><code>catime bench</code></td><td>runs the microbenchmark battery.</td></tr>
+      <tr><td>(no / bad args)</td><td>prints <code>usage_str</code> and exits 1.</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>The bench battery</h3>
+  <p>The <code>Lbench</code> path times five cases against
+  <code>CLOCK_MONOTONIC</code> (chosen deliberately over
+  <code>CLOCK_REALTIME</code> so clock slewing can't perturb the elapsed
+  measurement — the README calls this out). The cases:</p>
+  <ul>
+    <li><strong>(a)</strong> 100M iterations of the magic-multiply conversion.</li>
+    <li><strong>(b)</strong> 1M iterations of cat decompose (three mod-100
+    steps) + <code>_fmt_hms</code>.</li>
+    <li><strong>(b')</strong> 1M iterations of the <em>real</em> decompose
+    (mod-60/60/24) + format, as an apples-to-apples control. The README notes (b)
+    and (b') come out identical because arm64 <code>udiv</code> is constant-time
+    regardless of divisor — base-100 is not intrinsically faster than base-60.</li>
+    <li><strong>(c)</strong> 1M <code>clock_gettime</code> calls.</li>
+    <li><strong>(c')</strong> 1M <code>mach_absolute_time</code> calls — the
+    lower-overhead clock read, shown for contrast.</li>
+  </ul>
+  <p>A summary block then contrasts a live real-clock at 1 Hz
+  (<code>per-tick = b' + c</code>) against a live cat-clock at its native
+  11.574 Hz cadence (<code>per-tick = a + b + c</code>, scaled by the ratio to
+  ns/s), reporting each as a parts-per-billion fraction of one core. The
+  headline conclusion: per display update, catime is indistinguishable from a
+  regular wall clock; the whole steady-state difference is just the higher tick
+  rate.</p>
+</section>
+
+<section id="cli-fixed">
+  <h2>catime-fixed demo — the Linux spin-tick emitter</h2>
+  <p>Files: <code>main_fixed.s</code> (arm64), <code>main_x86_fixed.s</code>
+  (x86-64). A pure-syscall Linux ELF (entry <code>_start</code>, no libc) that
+  demonstrates the fixed-interval spin-tick pattern. Invocation:</p>
+  <pre><code>./catime-fixed &lt;interval_ns&gt; [iters]     # iters defaults to 10</code></pre>
+  <p>It anchors on <code>CLOCK_REALTIME</code>, computes the first grid target
+  as <code>ceil(start / interval) × interval</code>, then loops: spin on
+  <code>_read_realtime_ns</code> until the clock crosses the target, compute
+  <code>drift = observed − target</code> and <code>cat_ns = observed × 625 /
+  54</code>, format one line, and <code>SYS_write</code> it to stdout. Each line
+  reads:</p>
+  <pre><code>tick=N ptp_ns=N cat_ns=N drift_ns=N</code></pre>
+  <p>Because it cannot use libc, the demo carries its own tiny helpers:
+  <code>_atoi</code> (parse the args, no error handling — it stops at the first
+  non-digit), <code>_u64_str</code> (write a u64 as decimal then reverse the
+  digits in place), <code>_emit_label</code> (a byte-copy for the literal field
+  names), and <code>_write_buf</code> (the raw write syscall). The header
+  comment is candid that the spin uses the syscall clock (~500 ns/call) and that
+  production HFT would link the vDSO <code>__vdso_clock_gettime</code> (~25 ns)
+  for a ~20× lower spin overhead — a swap the library is structured to make
+  easy but does not perform itself.</p>
+</section>
+
+<section id="api-surface">
+  <h2>Public API surface</h2>
+
+  <h3>libcatime — <code>catime.h</code></h3>
+  <div class="tbl"><table>
+    <thead><tr><th>signature</th><th>meaning</th></tr></thead>
+    <tbody>
+      <tr><td><code>uint64_t ct_real_to_cat(uint64_t real)</code></td><td>real → cat, <code>× 625 / 54</code> (magic-mul).</td></tr>
+      <tr><td><code>uint64_t ct_cat_to_real(uint64_t cat)</code></td><td>cat → real, <code>× 54 / 625</code> (plain divide).</td></tr>
+      <tr><td><code>uint64_t ct_pack(uint64_t h, uint64_t m, uint64_t s)</code></td><td>base-100 H:M:S → flat <code>h*10000+m*100+s</code>.</td></tr>
+      <tr><td><code>void ct_split(uint64_t flat, uint64_t *h, uint64_t *m, uint64_t *s)</code></td><td>flat → base-100 components, written via pointers.</td></tr>
+      <tr><td><code>uint64_t ct_now_unix_sec(void)</code></td><td>current unix seconds (attached: libc; detached: counter).</td></tr>
+      <tr><td><code>uint64_t ct_now_unix_ns(void)</code></td><td>current unix nanoseconds (declared in header; omitted from README list).</td></tr>
+      <tr><td><code>uint64_t ct_now_cat_flat(void)</code></td><td>current cat time-of-day, flat <code>0…999999</code>.</td></tr>
+      <tr><td><code>void ct_detach(uint64_t start_unix_sec)</code></td><td>enter detached mode anchored at the given epoch.</td></tr>
+      <tr><td><code>void ct_attach(void)</code></td><td>return to wall-clock mode.</td></tr>
+      <tr><td><code>void ct_tick(uint64_t delta_sec)</code></td><td>advance detached counter; no-op when attached.</td></tr>
+      <tr><td><code>int ct_is_detached(void)</code></td><td>1 if detached, 0 if attached.</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>libcatime_fixed — <code>catime_fixed.h</code></h3>
+  <div class="tbl"><table>
+    <thead><tr><th>signature</th><th>meaning</th></tr></thead>
+    <tbody>
+      <tr><td><code>uint64_t cf_now_ns(void)</code></td><td><code>CLOCK_REALTIME</code> in ns via raw syscall.</td></tr>
+      <tr><td><code>uint64_t cf_to_cat_ns(uint64_t real_ns)</code></td><td>real ns → cat ns, <code>× 625 / 54</code>.</td></tr>
+      <tr><td><code>uint64_t cf_from_cat_ns(uint64_t cat_ns)</code></td><td>cat ns → real ns, <code>× 54 / 625</code>.</td></tr>
+      <tr><td><code>uint64_t cf_wait_until_ns(uint64_t target_ns)</code></td><td>spin until clock ≥ target; return observed sample.</td></tr>
+      <tr><td><code>uint64_t cf_next_grid_ns(uint64_t now_ns, uint64_t interval_ns)</code></td><td>smallest <code>k·interval &gt; now</code>.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="build">
+  <h2>Build system</h2>
+  <p>The <code>Makefile</code> has four meaningful targets. Everything builds
+  with Apple-shipped clang — no cross toolchain — because clang can retarget via
+  <code>-arch</code> (Mach-O) and <code>-target … -nostdlib</code> (Linux ELF).</p>
+  <div class="tbl"><table>
+    <thead><tr><th>target</th><th>builds</th><th>command shape</th></tr></thead>
+    <tbody>
+      <tr><td><code>make</code> / <code>all</code></td><td><code>catime</code> (arm64) + <code>catime-x86</code> (x86-64) CLI tools</td><td><code>clang -arch arm64 -o catime main.s</code></td></tr>
+      <tr><td><code>make api</code></td><td><code>lib_arm64.o</code>, <code>lib_x86.o</code> (Mach-O base library)</td><td><code>clang -arch arm64 -c lib_arm64.s</code></td></tr>
+      <tr><td><code>make lib</code></td><td><code>lib_fixed_arm64.o</code>, <code>lib_fixed_x86.o</code> (Linux ELF)</td><td><code>clang -target aarch64-linux-gnu -nostdlib -c …</code></td></tr>
+      <tr><td><code>make clean</code></td><td>removes binaries, <code>.o</code> files, <code>.dSYM</code> dirs</td><td>&mdash;</td></tr>
+    </tbody>
+  </table></div>
+  <p>The x86-64 CLI is built for macOS and runs under Rosetta on Apple Silicon;
+  the README's x86 benchmark numbers are Rosetta-translated, so native x86
+  hardware would be modestly faster. CLI tools and the base API link libc; the
+  fixed-interval library is pure-syscall. Committed <code>.o</code> files exist
+  in the tree, but <code>.gitignore</code> excludes the CLI binaries
+  (<code>catime</code>, <code>catime-x86</code>), all <code>*.o</code>, and
+  <code>*.dSYM/</code> from future commits.</p>
+</section>
+
+<section id="depgraph">
+  <h2>Where catime sits in cutestack</h2>
+  <p>catime is one of the four <strong>base</strong> projects of the cutestack
+  workspace, alongside <code>xcess</code>, <code>pompom</code>, and
+  <code>cutecontainer</code>. It has <em>no</em> sibling dependencies — it is a
+  leaf that others may consume, not a composite.</p>
+  <div class="layers">
+    <div class="layer"><div class="n">·</div><div><div class="nm">Bases</div><div class="ds"><code>xcess</code>, <code>catime</code>, <code>pompom</code>, <code>cutecontainer</code> — independent, no cross-refs among them.</div></div></div>
+    <div class="layer"><div class="n">·</div><div><div class="nm">lsc</div><div class="ds">latent spectral codec — depends on <code>xcess</code>.</div></div></div>
+    <div class="layer"><div class="n">·</div><div><div class="nm">chxx</div><div class="ds">the compositor — composes all five (xcess + lsc + pompom + catime + cutecontainer) via flat <code>../sibling</code> paths.</div></div></div>
+    <div class="layer"><div class="n">·</div><div><div class="nm">cc-gui</div><div class="ds">Tauri desktop GUI — shells out to the unified <code>chxx</code> CLI.</div></div></div>
+    <div class="layer"><div class="n">·</div><div><div class="nm">emmr-aes / emcurve</div><div class="ds">standalone libraries — not part of the composition.</div></div></div>
+  </div>
+  <p>Any consumer that needs base-100 timestamps or the synthetic-timebase
+  facility links catime's <code>.o</code> objects directly (e.g.
+  <code>clang your_app.c lib_arm64.o -o your_app</code>). The repo is its own
+  independent git repo and is published to the cutespace git server at
+  <code>git@cuteheart.love:sewerfilth/catime.git</code> (see
+  <code>PUBLISHING.md</code>).</p>
+</section>
+
+<section id="g-types">
+  <h2>Glossary</h2>
+  <p>Comprehensive index of everything defined in the source, grouped by kind.
+  "Where" gives the file the definition lives in.</p>
+
+  <h3 id="g-types-h">Structures &amp; types</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>name</th><th>where</th><th>meaning</th></tr></thead>
+    <tbody>
+      <tr><td><code>uint64_t</code></td><td><code>catime.h</code>, <code>catime_fixed.h</code></td><td>The one type in every signature. All arithmetic is 64-bit unsigned; no structs are exported.</td></tr>
+      <tr><td>timespec (<code>tv_sec</code>, <code>tv_nsec</code>)</td><td>libc / kernel ABI</td><td>Not defined here but consumed: an 8+8-byte pair the clock syscall fills. Read as two <code>ldr</code>/<code>movq</code> loads at offsets 0 and 8.</td></tr>
+      <tr><td>flat cat time-of-day</td><td>concept, all files</td><td>Not a C type — a <code>uint64_t</code> in <code>0…999999</code> encoding <code>HHMMSS</code> base-100. The library's central representation.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="g-funcs">
+  <h3>Functions</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>name</th><th>where</th><th>meaning</th></tr></thead>
+    <tbody>
+      <tr><td><code>ct_real_to_cat</code></td><td><code>lib_arm64.s</code> / <code>lib_x86.s</code></td><td>real → cat via magic-mul <code>/54</code>.</td></tr>
+      <tr><td><code>ct_cat_to_real</code></td><td>lib_*.s</td><td>cat → real via <code>× 54 / 625</code> plain divide.</td></tr>
+      <tr><td><code>ct_pack</code></td><td>lib_*.s</td><td>H,M,S → flat, two fused multiply-adds.</td></tr>
+      <tr><td><code>ct_split</code></td><td>lib_*.s</td><td>flat → H,M,S via pointers.</td></tr>
+      <tr><td><code>ct_now_unix_sec</code></td><td>lib_*.s</td><td>unix seconds; branches on detached mode.</td></tr>
+      <tr><td><code>ct_now_unix_ns</code></td><td>lib_*.s</td><td>unix nanoseconds; detached path is counter × 1e9.</td></tr>
+      <tr><td><code>ct_now_cat_flat</code></td><td>lib_*.s</td><td>current cat flat = <code>(unix % 86400) × 625 / 54</code>.</td></tr>
+      <tr><td><code>ct_detach</code></td><td>lib_*.s</td><td>store anchor, set mode = 1.</td></tr>
+      <tr><td><code>ct_attach</code></td><td>lib_*.s</td><td>set mode = 0.</td></tr>
+      <tr><td><code>ct_tick</code></td><td>lib_*.s</td><td>add delta to counter when detached, else no-op.</td></tr>
+      <tr><td><code>ct_is_detached</code></td><td>lib_*.s</td><td>return the mode byte.</td></tr>
+      <tr><td><code>cf_now_ns</code></td><td><code>lib_fixed_arm64.s</code> / <code>lib_fixed_x86.s</code></td><td>CLOCK_REALTIME ns via raw syscall.</td></tr>
+      <tr><td><code>cf_to_cat_ns</code></td><td>lib_fixed_*.s</td><td>real ns → cat ns (magic-mul).</td></tr>
+      <tr><td><code>cf_from_cat_ns</code></td><td>lib_fixed_*.s</td><td>cat ns → real ns.</td></tr>
+      <tr><td><code>cf_wait_until_ns</code></td><td>lib_fixed_*.s</td><td>spin until clock ≥ target; returns observed.</td></tr>
+      <tr><td><code>cf_next_grid_ns</code></td><td>lib_fixed_*.s</td><td>next absolute grid instant strictly after <code>now</code>.</td></tr>
+      <tr><td><code>_main</code></td><td><code>main.s</code> / <code>main_x86.s</code></td><td>CLI entry; string-dispatches on <code>argv[1]</code>.</td></tr>
+      <tr><td><code>_now_ns</code></td><td>main.s / main_x86.s</td><td>CLOCK_MONOTONIC in ns, for bench timing.</td></tr>
+      <tr><td><code>_fmt_hms</code></td><td>main.s / main_x86.s</td><td>H,M,S → <code>"HH:MM:SS\0"</code> via <code>digit_pairs</code> table, no calls.</td></tr>
+      <tr><td><code>_start</code></td><td><code>main_fixed.s</code> / <code>main_x86_fixed.s</code></td><td>ELF entry for the Linux spin-tick demo.</td></tr>
+      <tr><td><code>_atoi</code></td><td>main_fixed.s / main_x86_fixed.s</td><td>parse u64 from string; stops at first non-digit, no error handling.</td></tr>
+      <tr><td><code>_u64_str</code></td><td>main_fixed.s / main_x86_fixed.s</td><td>write u64 as decimal in place, then reverse.</td></tr>
+      <tr><td><code>_read_realtime_ns</code></td><td>main_fixed.s / main_x86_fixed.s</td><td>CLOCK_REALTIME ns via syscall into the shared <code>ts</code> scratch.</td></tr>
+      <tr><td><code>_write_buf</code></td><td>main_fixed.s / main_x86_fixed.s</td><td>raw <code>SYS_write</code> of (buf, len) to stdout.</td></tr>
+      <tr><td><code>_emit_label</code></td><td>main_fixed.s / main_x86_fixed.s</td><td>byte-copy a literal field label into the line buffer.</td></tr>
+      <tr><td><code>clock_gettime</code>, <code>printf</code>, <code>strcmp</code>, <code>atoll</code>, <code>mach_absolute_time</code></td><td>libc (macOS)</td><td>External symbols the CLI and base API call.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="g-consts">
+  <h3>Constants &amp; macros</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>name / value</th><th>where</th><th>meaning</th></tr></thead>
+    <tbody>
+      <tr><td><code>625</code> / <code>54</code></td><td>everywhere</td><td>The reduced conversion ratio, from <code>1,000,000 / 86,400</code> (gcd 1600).</td></tr>
+      <tr><td><code>0x97B425ED097B425F</code></td><td>lib_*.s, lib_fixed_*.s, main.s bench</td><td>Magic reciprocal for division by 54 (paired with <code>&gt;&gt; 5</code>).</td></tr>
+      <tr><td><code>86400</code> (<code>0x00015180</code>)</td><td>lib_*.s, main.s</td><td>Seconds per day; the modulus that strips the epoch to a second-of-day.</td></tr>
+      <tr><td><code>1,000,000,000</code> (<code>0x3B9ACA00</code>)</td><td>lib_*.s, lib_fixed_*.s, main.s</td><td>Nanoseconds per second, for the <code>tv_sec × 1e9 + tv_nsec</code> fold.</td></tr>
+      <tr><td><code>10000</code>, <code>100</code></td><td>lib_*.s, main.s</td><td>Base-100 decompose divisors: <code>h = flat/10000</code>, <code>m/s</code> via mod-100.</td></tr>
+      <tr><td><code>100,000,000</code> (<code>0x05F5E100</code>)</td><td>main.s bench</td><td>Iteration count for case (a).</td></tr>
+      <tr><td><code>1,000,000</code> (<code>0x000F4240</code>)</td><td>main.s bench</td><td>Iteration count for cases (b), (b'), (c), (c').</td></tr>
+      <tr><td><code>SYS_clock_gettime</code> = 113 (arm64) / 228 (x86-64)</td><td>lib_fixed_*.s, main_*_fixed.s</td><td>Linux syscall number for <code>clock_gettime</code>; differs per arch.</td></tr>
+      <tr><td><code>SYS_write</code> = 64, <code>SYS_exit</code> = 93</td><td>main_fixed.s (arm64)</td><td>Linux syscall numbers used by the demo (x86-64 uses its own values in <code>main_x86_fixed.s</code>).</td></tr>
+      <tr><td><code>CLOCK_REALTIME</code> = 0</td><td>lib_fixed_*.s, main_*_fixed.s, main.s</td><td>Wall clock (UTC, NTP/PTP-disciplined).</td></tr>
+      <tr><td><code>CLOCK_MONOTONIC</code> = 6 (Darwin)</td><td>main.s <code>_now_ns</code></td><td>Slew-immune clock used only for bench elapsed timing.</td></tr>
+      <tr><td><code>STDOUT</code> = 1</td><td>main_fixed.s</td><td>File descriptor for the demo's write syscall.</td></tr>
+      <tr><td><code>msg_usage_len</code></td><td>main_fixed.s</td><td>Assemble-time length of the usage string (<code>. - msg_usage</code>).</td></tr>
+      <tr><td>PHC clockid <code>((~fd) &lt;&lt; 3) | 3</code></td><td><code>cf_phc_clockid</code> in lib_fixed_*.s</td><td>Dynamic PTP hardware clock id — implemented; feed to <code>cf_now_dynamic_ns</code>.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="g-globals">
+  <h3>Globals &amp; statics</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>name</th><th>where</th><th>meaning</th></tr></thead>
+    <tbody>
+      <tr><td><code>_ct_mode</code></td><td>lib_arm64.s / lib_x86.s (<code>__DATA,__bss</code>)</td><td>8-byte flag: 0 = attached, 1 = detached.</td></tr>
+      <tr><td><code>_ct_counter</code></td><td>lib_*.s (<code>__bss</code>)</td><td>8-byte detached synthetic unix-seconds counter.</td></tr>
+      <tr><td><code>cf_ts</code></td><td>lib_fixed_*.s (<code>.bss</code>)</td><td>Shared 16-byte timespec scratch for <code>cf_now_ns</code>. The header's "no globals" claim overlooks this.</td></tr>
+      <tr><td><code>ts</code></td><td>main_fixed.s (<code>.bss</code>)</td><td>16-byte timespec scratch for the demo's <code>_read_realtime_ns</code>.</td></tr>
+      <tr><td><code>linebuf</code></td><td>main_fixed.s (<code>.bss</code>)</td><td>256-byte output line scratch for one emitted tick.</td></tr>
+      <tr><td><code>digit_pairs</code></td><td>main.s / main_x86.s (<code>__TEXT</code>)</td><td>200-byte read-only lookup: ASCII for every 00…99 pair. Powers <code>_fmt_hms</code>.</td></tr>
+      <tr><td>format literals (<code>fmt_fwd</code>, <code>fmt_rev</code>, <code>fmt_now</code>, <code>fmt_hms_kv</code>, <code>usage_str</code>, <code>bench_hdr</code>, <code>fmt_b_*</code>)</td><td>main.s <code>__cstring</code></td><td>printf format strings and the subcommand-name literals (<code>str_bench</code>, <code>str_now</code>, <code>str_split</code>, <code>str_pack</code>, <code>str_rev</code>).</td></tr>
+      <tr><td>label literals (<code>lit_tick</code>, <code>lit_ptp</code>, <code>lit_cat</code>, <code>lit_drift</code>, <code>lit_nl</code>, <code>msg_usage</code>)</td><td>main_fixed.s <code>.rodata</code></td><td>Field-name strings the demo copies into <code>linebuf</code>.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="g-cli">
+  <h3>CLI args &amp; notable symbols</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>token</th><th>where</th><th>meaning</th></tr></thead>
+    <tbody>
+      <tr><td><code>&lt;real_seconds&gt;</code></td><td>catime CLI</td><td>Bare numeric arg → forward conversion.</td></tr>
+      <tr><td><code>-r &lt;cat_seconds&gt;</code></td><td>catime CLI (<code>str_rev</code>)</td><td>Reverse conversion.</td></tr>
+      <tr><td><code>now</code></td><td>catime CLI (<code>str_now</code>)</td><td>Print wall-clock now in real and cat.</td></tr>
+      <tr><td><code>split &lt;flat&gt;</code></td><td>catime CLI (<code>str_split</code>)</td><td>Decompose a flat integer.</td></tr>
+      <tr><td><code>pack &lt;H&gt; &lt;M&gt; &lt;S&gt;</code></td><td>catime CLI (<code>str_pack</code>)</td><td>Compose a flat integer.</td></tr>
+      <tr><td><code>bench</code></td><td>catime CLI (<code>str_bench</code>)</td><td>Run microbenchmarks.</td></tr>
+      <tr><td><code>&lt;interval_ns&gt; [iters]</code></td><td>catime-fixed demo</td><td>Spin-tick interval and count (iters defaults to 10).</td></tr>
+    </tbody>
+  </table></div>
+  <p>There are <strong>no environment variables</strong> and no compile-time
+  configuration flags in the source — behaviour is entirely determined by the
+  arguments above and by which object file you link. The only build knobs are
+  the clang flags in the <code>Makefile</code>.</p>
+</section>
+
+<section id="limitations">
+  <h2>Current limitations</h2>
+  <p>An honest accounting of what is unfinished, approximate, or caveated —
+  read directly from the source and its comments.</p>
+  <div class="card sev-warn">
+    <h4>Syscall clock, not vDSO <span class="chip c-partial">partial</span></h4>
+    <p><code>cf_now_ns</code> and the demo's <code>_read_realtime_ns</code> use
+    the raw <code>clock_gettime</code> syscall (~500 ns/call per the comments).
+    Production HFT latency (~25 ns) requires linking the host's vDSO
+    <code>__vdso_clock_gettime</code>. The code is structured to make that a
+    near one-instruction swap, but it does not do it.</p>
+  </div>
+  <div class="card sev-warn">
+    <h4>Fixed-interval clock-read cost is Linux-only <span class="chip c-partial">partial</span></h4>
+    <p>The conversion kernels are now <em>measured</em> — <code>make bench</code>
+    reports ~2.8 ns/op for the magic-mul forward path and ~5.1 ns/op for the
+    rounded reverse divide on Apple M-series, and those routines are
+    instruction-identical to the Linux <code>cf_to_cat_ns</code>/<code>cf_from_cat_ns</code>.
+    The <code>cf_*</code> ELF kernels are also now <em>executed</em> natively
+    (not merely cross-assembled from macOS): <code>make test-linux</code> runs
+    <code>tests/test_catime_linux.c</code> against the real
+    <code>lib_fixed_{x86,arm64}.s</code> objects on x86_64 and aarch64 Linux in
+    CI, so correctness is verified on-target. What still can't be
+    <em>measured</em> from macOS is <code>cf_now_ns</code>'s raw
+    <code>clock_gettime</code> syscall (~500–800 ns), a Linux kernel-entry cost.</p>
+  </div>
+  <div class="card sev-warn">
+    <h4>"No globals" wording vs. shared BSS scratch <span class="chip c-partial">partial</span></h4>
+    <p><code>catime_fixed.h</code> advertises "caller-managed state (no globals,
+    no init)", but <code>cf_now_ns</code> writes into a shared <code>.bss</code>
+    timespec (<code>cf_ts</code>). Harmless single-threaded, but it is process
+    global state and is not thread-safe as written.</p>
+  </div>
+  <div class="card sev-warn">
+    <h4>Reverse conversion is now correctly rounded <span class="chip c-ok">fixed</span></h4>
+    <p>The reverse path (<code>ct_cat_to_real</code> / <code>cf_from_cat_ns</code>)
+    now adds <code>625/2 = 312</code> before the divide, so <code>× 54 / 625</code>
+    rounds to nearest instead of truncating. real → cat → real is exact over the
+    tested range (worst error 0), and the residual cat → real → cat error (≤ 6)
+    is the unavoidable lattice slack — real is the coarser unit (~11.57 cat per
+    real) — not a rounding defect. Proven by <code>make test</code>.</p>
+  </div>
+  <div class="card sev">
+    <h4>Platform split is intentional</h4>
+    <p>Not a limitation so much as a boundary: <strong>libcatime</strong>
+    targets macOS Mach-O and links libc; <strong>libcatime_fixed</strong>
+    targets Linux ELF and refuses libc. There is no single object that does
+    both, and the <code>ct_*</code> and <code>cf_*</code> namespaces do not
+    interoperate beyond sharing the 625:54 ratio.</p>
+  </div>
+</section>
+
+<div class="foot">CuteHeart Exosystems · catime · generated from source</div>
+</main>
+</div>
+</body>
+</html>

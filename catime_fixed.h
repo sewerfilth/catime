@@ -18,12 +18,36 @@ extern "C" {
  * synced host this gives sub-microsecond accuracy. Without PTP, the resolution
  * is set by the kernel's NTP discipline (typically tens of microseconds).
  *
- * For nanosecond-level production HFT, swap CLOCK_REALTIME for the dynamic
- * PHC clockid: open /dev/ptpN, then clockid = ((~fd) << 3) | 3.
+ * For nanosecond-level production HFT, read the NIC's PTP hardware clock
+ * directly via the dynamic PHC clock API below (cf_open_phc / cf_phc_clockid
+ * / cf_now_dynamic_ns) rather than CLOCK_REALTIME.
  */
 
 /* Current CLOCK_REALTIME in nanoseconds since Unix epoch. */
 uint64_t cf_now_ns(void);
+
+/*
+ * Dynamic PHC (PTP hardware clock) source.
+ *
+ * A NIC's PTP hardware clock is exposed at /dev/ptpN. Open the device, convert
+ * its fd to a dynamic POSIX clockid, then read that clockid. Typical use:
+ *
+ *   int      fd  = cf_open_phc("/dev/ptp0");   // < 0 on error (-errno)
+ *   int      cid = cf_phc_clockid(fd);
+ *   uint64_t ns  = cf_now_dynamic_ns(cid);     // PHC time, ns since epoch
+ *
+ * cf_now_dynamic_ns(CLOCK_REALTIME) is equivalent to cf_now_ns(). These are
+ * Linux-only (they issue openat(2)/clock_gettime(2) syscalls directly).
+ */
+
+/* openat(AT_FDCWD, path, O_RDONLY). Returns an fd, or a negative errno. */
+int cf_open_phc(const char *path);
+
+/* Kernel FD_TO_CLOCKID: ((~fd) << 3) | 3. */
+int cf_phc_clockid(int fd);
+
+/* clock_gettime(clockid) in nanoseconds since epoch. */
+uint64_t cf_now_dynamic_ns(int clockid);
 
 /* Convert real ns -> cat ns via exact integer ratio 625/54. */
 uint64_t cf_to_cat_ns(uint64_t real_ns);
