@@ -196,6 +196,7 @@ written to make that a one-instruction swap.
 ```
 make            # macOS arm64 + x86_64 CLI tools (catime, catime-x86)
 make api        # macOS Mach-O base library (lib_arm64.o, lib_x86.o)
+make test-linux-api  # base library on Linux x86_64 (ELF build of lib_x86_64.S)
 make lib        # Linux ELF fixed-interval library (lib_fixed_*.o)
 make test       # automated tests: native arm64 + x86_64 (Rosetta)
 make bench      # measured conversion microbenchmark (arm64)
@@ -258,7 +259,12 @@ The detached `ct_now_unix_sec` is a single `ldr`/`movq` from BSS — about
 **1 GOps/s** on this hardware. That's the upper bound on how fast a
 simulation can step through cat-time.
 
-## libcatime (macOS Mach-O — base API)
+## libcatime (base API)
+
+`lib_arm64.s` (macOS arm64) and `lib_x86_64.S` (x86_64: one source that
+assembles as Mach-O, ELF or COFF through `x64_abi.h`; on Win64 each entry is
+a thunk into the SysV body, and the wall clock comes from
+`GetSystemTimePreciseAsFileTime`).
 
 Linkable static library object exposing the base catime primitives. See
 [catime.h](catime.h):

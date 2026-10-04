@@ -1,24 +1,54 @@
-// libcatime — x86_64 / Darwin Mach-O (base API)
+// libcatime — x86_64 (base API): Mach-O, ELF and COFF from one source
 //
-// AT&T syntax. Links against libc for system-time access.
-// Detached mode (ct_detach/ct_tick/ct_attach) drives a synthetic timebase
-// for replay and warp-speed simulation.
+// AT&T syntax, run through the C preprocessor (x64_abi.h: symbol prefix,
+// sections, .type, and on Win64 an entry thunk into each SysV body, so the
+// public ABI is native on every target). The wall clock is clock_gettime
+// (CLOCK_REALTIME) on macOS and Linux, GetSystemTimePreciseAsFileTime on
+// Windows. Detached mode (ct_detach/ct_tick/ct_attach) drives a synthetic
+// timebase for replay and warp-speed simulation.
 //
 // Compile:
-//   clang -arch x86_64 -c lib_x86.s -o lib_x86.o
+//   clang -arch x86_64 -c lib_x86_64.S -o lib_x86.o      (macOS)
+//   cc -c lib_x86_64.S                                   (Linux, mingw-w64)
 
+#include "x64_abi.h"
+
+#if defined(__APPLE__)
+#define V(x) _##x
 .section __DATA,__bss
 .lcomm _ct_mode,    8           // 0=attached, 1=detached
 .lcomm _ct_counter, 8
+#define CLOCK_GETTIME _clock_gettime
+#else
+#define V(x) x
+#if !defined(_WIN32)
+#define CLOCK_GETTIME clock_gettime@PLT
+#endif
+    .bss
+    .p2align 3
+ct_mode:    .quad 0             // 0=attached, 1=detached (file-local)
+ct_counter: .quad 0
+#endif
 
-.section __TEXT,__text
+#if defined(_WIN32)
+// WALL_100NS: rax = wall clock in 100 ns ticks since the Unix epoch. Called
+// from a SysV body with rbp pushed (rsp = 0 mod 16): GetSystemTimePrecise-
+// AsFileTime is a Win64 function, so 32 bytes of shadow space, arg in rcx.
+// It counts 100 ns ticks since 1601-01-01; 11644473600 s separate the epochs.
+.macro WALL_100NS
+    subq  $48, %rsp                  // 32 shadow + FILETIME at 32(%rsp)
+    leaq  32(%rsp), %rcx
+    callq *__imp_GetSystemTimePreciseAsFileTime(%rip)
+    movq  32(%rsp), %rax
+    movabsq $116444736000000000, %rcx
+    subq  %rcx, %rax
+.endm
+#endif
 
 // ----------------------------------------------------------------------------
 // uint64_t ct_real_to_cat(uint64_t real)
 // ----------------------------------------------------------------------------
-.global _ct_real_to_cat
-.p2align 4
-_ct_real_to_cat:
+FUNC ct_real_to_cat
     imulq $625, %rdi, %rax
     movabsq $0x97B425ED097B425F, %rcx
     mulq  %rcx
@@ -32,9 +62,7 @@ _ct_real_to_cat:
 //   The (cat*54) mod 625 remainder is integral, so 312.5 is never hit:
 //   correctly rounded (r>=313 up, r<=312 down).
 // ----------------------------------------------------------------------------
-.global _ct_cat_to_real
-.p2align 4
-_ct_cat_to_real:
+FUNC ct_cat_to_real
     imulq $54, %rdi, %rax
     addq  $312, %rax                 // + 625/2 : round-to-nearest
     xorq  %rdx, %rdx
@@ -46,9 +74,7 @@ _ct_cat_to_real:
 // uint64_t ct_pack(uint64_t h, uint64_t m, uint64_t s)
 //   args: rdi=h, rsi=m, rdx=s
 // ----------------------------------------------------------------------------
-.global _ct_pack
-.p2align 4
-_ct_pack:
+FUNC ct_pack
     imulq $100, %rdi, %rax
     addq  %rsi, %rax
     imulq $100, %rax, %rax
@@ -60,9 +86,7 @@ _ct_pack:
 //   args: rdi=flat, rsi=*h, rdx=*m, rcx=*s
 //   move ptrs to scratch regs first since rdx/rcx are clobbered by div
 // ----------------------------------------------------------------------------
-.global _ct_split
-.p2align 4
-_ct_split:
+FUNC ct_split
     movq  %rsi, %r8                  // r8 = *h
     movq  %rdx, %r9                  // r9 = *m
     movq  %rcx, %r10                 // r10 = *s
@@ -88,40 +112,32 @@ _ct_split:
 // ----------------------------------------------------------------------------
 // void ct_detach(uint64_t start_unix_sec)
 // ----------------------------------------------------------------------------
-.global _ct_detach
-.p2align 4
-_ct_detach:
-    movq  %rdi, _ct_counter(%rip)
-    movq  $1, _ct_mode(%rip)
+FUNC ct_detach
+    movq  %rdi, V(ct_counter)(%rip)
+    movq  $1, V(ct_mode)(%rip)
     retq
 
 // ----------------------------------------------------------------------------
 // void ct_attach(void)
 // ----------------------------------------------------------------------------
-.global _ct_attach
-.p2align 4
-_ct_attach:
-    movq  $0, _ct_mode(%rip)
+FUNC ct_attach
+    movq  $0, V(ct_mode)(%rip)
     retq
 
 // ----------------------------------------------------------------------------
 // void ct_tick(uint64_t delta_sec)
 // ----------------------------------------------------------------------------
-.global _ct_tick
-.p2align 4
-_ct_tick:
-    cmpq  $0, _ct_mode(%rip)
+FUNC ct_tick
+    cmpq  $0, V(ct_mode)(%rip)
     je    1f
-    addq  %rdi, _ct_counter(%rip)
+    addq  %rdi, V(ct_counter)(%rip)
 1:  retq
 
 // ----------------------------------------------------------------------------
 // int ct_is_detached(void)
 // ----------------------------------------------------------------------------
-.global _ct_is_detached
-.p2align 4
-_ct_is_detached:
-    movq  _ct_mode(%rip), %rax
+FUNC ct_is_detached
+    movq  V(ct_mode)(%rip), %rax
     retq
 
 // ----------------------------------------------------------------------------
@@ -129,21 +145,26 @@ _ct_is_detached:
 //   detached: single load (~1ns)
 //   attached: clock_gettime via libc (~22ns under Rosetta)
 // ----------------------------------------------------------------------------
-.global _ct_now_unix_sec
-.p2align 4
-_ct_now_unix_sec:
-    cmpq  $0, _ct_mode(%rip)
+FUNC ct_now_unix_sec
+    cmpq  $0, V(ct_mode)(%rip)
     je    1f
-    movq  _ct_counter(%rip), %rax
+    movq  V(ct_counter)(%rip), %rax
     retq
 1:  pushq %rbp
     movq  %rsp, %rbp
+#if defined(_WIN32)
+    WALL_100NS                       // rax = 100 ns ticks since 1970
+    xorl  %edx, %edx
+    movq  $10000000, %rcx
+    divq  %rcx                       // seconds
+#else
     subq  $16, %rsp
     movl  $0, %edi                   // CLOCK_REALTIME
     movq  %rsp, %rsi
     xorl  %eax, %eax
-    callq _clock_gettime
+    callq CLOCK_GETTIME
     movq  (%rsp), %rax               // tv_sec
+#endif
     leave
     retq
 
@@ -152,40 +173,41 @@ _ct_now_unix_sec:
 //   detached: counter * 1e9 (synthetic seconds → ns)
 //   attached: tv_sec*1e9 + tv_nsec via clock_gettime
 // ----------------------------------------------------------------------------
-.global _ct_now_unix_ns
-.p2align 4
-_ct_now_unix_ns:
-    cmpq  $0, _ct_mode(%rip)
+FUNC ct_now_unix_ns
+    cmpq  $0, V(ct_mode)(%rip)
     je    1f
-    movq  _ct_counter(%rip), %rax
+    movq  V(ct_counter)(%rip), %rax
     imulq $1000000000, %rax, %rax
     retq
 1:  pushq %rbp
     movq  %rsp, %rbp
+#if defined(_WIN32)
+    WALL_100NS                       // rax = 100 ns ticks since 1970
+    imulq $100, %rax, %rax           // ns
+#else
     subq  $16, %rsp
     movl  $0, %edi                   // CLOCK_REALTIME
     movq  %rsp, %rsi
     xorl  %eax, %eax
-    callq _clock_gettime
+    callq CLOCK_GETTIME
     movq  (%rsp), %rax               // tv_sec
     imulq $1000000000, %rax, %rax
     addq  8(%rsp), %rax              // + tv_nsec
+#endif
     leave
     retq
 
 // ----------------------------------------------------------------------------
 // uint64_t ct_now_cat_flat(void)
 // ----------------------------------------------------------------------------
-.global _ct_now_cat_flat
-.p2align 4
-_ct_now_cat_flat:
+FUNC ct_now_cat_flat
     pushq %rbp
     movq  %rsp, %rbp
-    callq _ct_now_unix_sec
+    callq CALL(ct_now_unix_sec)
     movq  $86400, %rcx
     xorq  %rdx, %rdx
     divq  %rcx                       // rdx = sec_of_day
     movq  %rdx, %rdi
-    callq _ct_real_to_cat
+    callq CALL(ct_real_to_cat)
     popq  %rbp
     retq

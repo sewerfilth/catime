@@ -23,7 +23,9 @@ lib: lib_fixed_arm64.o lib_fixed_x86.o
 lib_arm64.o: lib_arm64.s
 	clang -arch arm64 -c $< -o $@
 
-lib_x86.o: lib_x86.s
+# lib_x86_64.S is the one x86_64 source for Mach-O, ELF and COFF (x64_abi.h);
+# this Mach-O object is byte-identical to the one the former lib_x86.s gave.
+lib_x86.o: lib_x86_64.S x64_abi.h
 	clang -arch x86_64 -c $< -o $@
 
 api: lib_arm64.o lib_x86.o
@@ -72,6 +74,15 @@ LINUX_LD ?= cc
 lib_fixed_native.o: $(LINUX_FIXED_SRC)
 	$(LINUX_CC) -c $(LINUX_FIXED_SRC) -o lib_fixed_native.o
 
+# Base API (ct_*) natively on Linux x86_64: the same tests/test_catime.c the
+# macOS targets run, against the ELF build of lib_x86_64.S.
+lib_x86_64_elf.o: lib_x86_64.S x64_abi.h
+	$(LINUX_CC) -c lib_x86_64.S -o $@
+
+test-linux-api: lib_x86_64_elf.o tests/test_catime.c
+	$(LINUX_LD) -O2 -o tests/test_catime_api tests/test_catime.c lib_x86_64_elf.o
+	./tests/test_catime_api
+
 test-linux: lib_fixed_native.o tests/test_catime_linux.c
 	$(LINUX_LD) -O2 -o tests/test_catime_linux tests/test_catime_linux.c lib_fixed_native.o
 	./tests/test_catime_linux
@@ -86,7 +97,7 @@ clean:
 	rm -f lib_arm64.o lib_x86.o
 	rm -f lib_fixed_arm64.o lib_fixed_x86.o
 	rm -f tests/test_catime_arm64 tests/test_catime_x86 tests/bench_arm64
-	rm -f lib_fixed_native.o tests/test_catime_linux
+	rm -f lib_fixed_native.o tests/test_catime_linux lib_x86_64_elf.o tests/test_catime_api
 	rm -rf *.dSYM
 
-.PHONY: all clean lib api test test-arm64 test-x86 test-linux bench
+.PHONY: all clean lib api test test-arm64 test-x86 test-linux test-linux-api bench
